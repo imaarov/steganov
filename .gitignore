@@ -1,0 +1,7 @@
+*.o
+build/*.o
+bin/*
+*.bmp
+*.swp
+src/*.swp
+include/*.swp
