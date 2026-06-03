@@ -1,25 +1,64 @@
 #include "../include/bmp.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-int headerSignatureIsNotStandard(Byte header[2]);
+bool headerSignatureIsNotStandard(Byte header[2]);
 Byte* getHeader(FILE *file);
 Byte *getSize(FILE *file);
 unsigned int hexaToDecimal(Byte *hexa, unsigned short size);
 
-void encodeBMP(FILE *file, char *secretMessage) {
-    BMPHeaderFile *bmpHeader = malloc(sizeof(BMPHeaderFile));
+bool encodeBMP(FILE *file, char *secretMessage) {
+    //BMPHeaderFile *bmpHeader = malloc(sizeof(BMPHeaderFile));
     Byte *header = NULL;
     Byte *size   = NULL;
     header = getHeader(file);
     if (headerSignatureIsNotStandard(header)) {
         printf("ERROR: the file signature is not the same as standard BMP signature\n");
-        return;
+        return 0;
     }
     size = getSize(file);
     unsigned int decimalSize = hexaToDecimal(size, 4);
-    
-    printf("size of the file: %d KB\n", decimalSize);
+    unsigned int messageLength = strlen(secretMessage);
+    // after header and size traversing, the file pointer should be in (4 + 2) = 6
+    // in the address of 10th byte to 13  we have the byte, where the pixels data is resie
+    Byte addr[4];
+    fseek(file, 4, SEEK_CUR);
+    for (int i = 0; i < 4; i++) {
+        addr[i] = fgetc(file);
+    }
+    unsigned int pixelOffset = hexaToDecimal(addr, 4);
+    fseek(file, pixelOffset, SEEK_SET);
+    // for secret message sizes I multiplied it with 8, cause its LSB way for now, and 
+    // each bit of message need the least significant bit of a BYTE to alter that
+    // so in general for each byte of secret character we need 8 bytes to store them 
+    // because of the nature of the LSB
+    // we dont want to corrupt a file by editing the header area and read only area
+    // the decimalSize - 10 its for that, we dont count them, cause those are header byte
+    if (ableToEncode(decimalSize - pixelOffset, messageLength * 8)) {
+        for (unsigned int i = 0; i < messageLength; i++) {
+            Byte mask = 0b10000000;
+            for (int b = 0; b < 8; b++) {
+                Byte c = fgetc(file);
+                Byte bitMessage = (secretMessage[i] >> (7 - b)) & 1;
+                c = (c & 0xFE) | bitMessage;
+
+                fseek(file, -1, SEEK_CUR);
+                fputc(c, file);
+                mask >>= 1;
+            }
+        }
+    }else {
+        printf("ERROR: its not possible to store message data in the file because of the file size\n");
+        printf("INFO: file size: %u, message size: %lu\n", decimalSize, strlen(secretMessage));
+        return 0;
+    }
+
+
+    // clean up
+    free(header);
+    free(size);
+    return 1;
 }
 
 Byte* getHeader(FILE *file) {
@@ -40,7 +79,7 @@ Byte *getSize(FILE *file) {
     return size;
 }
 
-int headerSignatureIsNotStandard(Byte header[2]) {
+bool headerSignatureIsNotStandard(Byte header[2]) {
     printf("CHECKING: check the file header signature\n");
     int signature = header[0] << 8 | header[1];
     if (signature != BMP_HEADER_SIGNATURE) {

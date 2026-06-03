@@ -13,6 +13,6 @@ typedef struct BMPHeaderFile {
     Byte size[4];
 } BMPHeaderFile;
 
-void encodeBMP(FILE *file,char *secretMessage);
+bool encodeBMP(FILE *file,char *secretMessage);
 
 #endif

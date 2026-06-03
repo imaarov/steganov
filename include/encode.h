@@ -1,10 +1,12 @@
 #ifndef ENCODE_H
 #define ENCODE_H
 
+#include <stdbool.h>
+
 typedef unsigned char Byte;
 
-void encode(char *fileName, char *secretMessage);
+bool encode(char *fileName, char *secretMessage);
 unsigned int hexaToDecimal(Byte *hexadecimalArray, unsigned short size);
-int ableToEncode(unsigned short fileDataSize, unsigned short secretMessageSize);
+bool ableToEncode(unsigned int fileDataSize, unsigned int secretMessageSize);
 
 #endif

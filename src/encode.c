@@ -3,19 +3,29 @@
 #include <stdio.h>
 #include <string.h>
 
-void encode(char *fileName, char *secretMessage) {
-    FILE *file = fopen(fileName, "r");
+bool encode(char *fileName, char *secretMessage) {
+    FILE *file = fopen(fileName, "rb+");
     printf("TRY OPENING: [%s]\n", fileName);
     if (file == NULL) {
         printf("failed to open the file named: %s\n", fileName);
-        return;
+        return false;
     }
 
     char *fileExtension = strchr(fileName, '.');
-    char *supportedExtension = ".bmp";
-    if (!strcmp(fileExtension, supportedExtension)) {
-        encodeBMP(file, secretMessage);
+    if (strcmp(".bmp", fileExtension)) {
+        printf("INFO: File type is not supported\n");
+        return false;
     }
+    if (!encodeBMP(file, secretMessage)) {
+        printf("INFO: Failed to encode\n");
+        return false;
+    }
+    printf("INFO: Successful encoding operation\n");
+
+
+    // clean up
+    fclose(file);
+    return true;
 }
 
 unsigned int hexaToDecimal(Byte *hexa, unsigned short size) {
@@ -26,8 +36,8 @@ unsigned int hexaToDecimal(Byte *hexa, unsigned short size) {
     return result;
 }
 
-int ableToEncode(unsigned short fileDataSize, unsigned short secretMessageSize) {
-    if (fileDataSize != secretMessageSize) {
+bool ableToEncode(unsigned int fileDataSize, unsigned int secretMessageSize) {
+    if (fileDataSize < secretMessageSize) {
         return 0;
     }
     return 1;
