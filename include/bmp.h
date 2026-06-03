@@ -4,6 +4,7 @@
 #include <stdio.h>
 #define BMP_HEADER_SIZE 2
 #define BMP_FILE_LEN_SIZE 2
+#define BMP_HEADER_SIGNATURE 0x424d
 
 typedef unsigned char Byte;
 
