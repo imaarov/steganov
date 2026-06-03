@@ -2,11 +2,10 @@
 #define BMP_H
 
 #include <stdio.h>
+#include "encode.h"
 #define BMP_HEADER_SIZE 2
 #define BMP_FILE_LEN_SIZE 2
 #define BMP_HEADER_SIGNATURE 0x424d
-
-typedef unsigned char Byte;
 
 typedef struct BMPHeaderFile {
     unsigned short startHeader;
@@ -14,6 +13,6 @@ typedef struct BMPHeaderFile {
     Byte size[4];
 } BMPHeaderFile;
 
-void encodeBMP(FILE *file);
+void encodeBMP(FILE *file,char *secretMessage);
 
 #endif
