@@ -1,6 +1,7 @@
 #ifndef BMP_H
 #define BMP_H
 
+#include <stdio.h>
 #define BMP_HEADER_SIZE 2
 #define BMP_FILE_LEN_SIZE 2
 
@@ -11,5 +12,7 @@ typedef struct BMPHeaderFile {
     Byte header[BMP_HEADER_SIZE];             // header file of bmp, 0x42 0x4d
     Byte size[4];
 } BMPHeaderFile;
+
+void encodeBMP(FILE *file);
 
 #endif
