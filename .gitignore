@@ -2,6 +2,7 @@
 build/*.o
 bin/*
 *.bmp
+*.wav
 *.swp
 src/*.swp
 include/*.swp
