@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #define WAV_HEADER_SIZE 4
-#define WAV_HEADER SIGNATURE 0x52494646    // signature of WAV RIFF header (RIFF)
+#define WAV_HEADER_SIGNATURE 0x52494646    // signature of WAV RIFF header (RIFF)
 
 typedef struct WAVHeaderFile {
     Byte headerSignature[4];    // file signature, RIFF
