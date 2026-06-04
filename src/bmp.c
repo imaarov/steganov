@@ -31,6 +31,25 @@ bool encodeBMP(FILE *file, char *secretMessage) {
     }
     unsigned int decimalPixelOffset = hexaToDecimal(pixelOffset, 4);
     fseek(file, decimalPixelOffset, SEEK_SET);
+    // encode the size of our message in a fixed position in the file
+    // the fixed position for locating the message size is 14 to 46 (typically the size of unsigned int is 4byte)
+    unsigned int sizeOfByteMessage = sizeof(messageLength);
+    unsigned int sizeInBit = sizeOfByteMessage * 8;
+    if (ableToEncode(decimalFileSize - decimalPixelOffset, sizeOfByteMessage * 8)) {
+        for (int i = 0; i < sizeInBit; i++) {
+            Byte c = fgetc(file);
+            c = (c & 0b11111110) | ((messageLength >> (sizeInBit - 1 - i)) & 0b00000001);
+
+            fseek(file, -1, SEEK_CUR);
+            fputc(c, file);
+        }
+    } else {
+        printf("ERROR: failed to encode file size\n");
+        free(header);
+        free(size);
+        return false;
+    }
+
     // for secret message sizes I multiplied it with 8, cause its LSB way for now, and 
     // each bit of message need the least significant bit of a BYTE to alter that
     // so in general for each byte of secret character we need 8 bytes to store them 
@@ -38,9 +57,8 @@ bool encodeBMP(FILE *file, char *secretMessage) {
     // we don't want to corrupt a file by editing the header area and read only area
     // the decimalSize - decimalPixelOffset its for that, we don't count them
     // cause those are header byte + reserved byte position
-    if (ableToEncode(decimalFileSize - decimalPixelOffset, messageLength * 8)) {
+    if (ableToEncode(decimalFileSize - decimalPixelOffset - 32, messageLength * 8)) {
         for (unsigned int i = 0; i < messageLength; i++) {
-            Byte mask = 0b10000000;
             for (int b = 0; b < 8; b++) {
                 Byte c = fgetc(file);
                 Byte bitMessage = (secretMessage[i] >> (7 - b)) & 0b00000001;
@@ -48,7 +66,6 @@ bool encodeBMP(FILE *file, char *secretMessage) {
 
                 fseek(file, -1, SEEK_CUR);
                 fputc(c, file);
-                mask >>= 1;
             }
         }
     }else {
@@ -62,6 +79,11 @@ bool encodeBMP(FILE *file, char *secretMessage) {
     free(header);
     free(size);
     return 1;
+}
+
+char *decodeBMP(FILE *file) {
+    //TODO implement
+    return NULL;
 }
 
 Byte* getHeader(FILE *file) {

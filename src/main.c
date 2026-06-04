@@ -5,6 +5,7 @@
 #define MAX_SECRET_MESSAGE_LEN 255
 #include <stdio.h>
 #include "../include/encode.h"
+#include "../include/decode.h"
 
 void prompt(char **fileName, char **secretMessage);
 char* getFileName();
@@ -35,19 +36,21 @@ void prompt(char **fileName, char **secretMessage) {
             return;
         }
         int userOption = (int)strtol(buffer, NULL, 10);
-        if (userOption == 1) {
+        if (userOption == 1) {      // encoding
             *fileName      = getFileName();
             *secretMessage = getSecret();
             if (*fileName == NULL || *secretMessage == NULL) {
                 continue;
             }
             encode(*fileName, *secretMessage);
-        }else if(userOption == 2) {
+        }else if(userOption == 2) { // decoding
             *fileName      = getFileName();
             if (*fileName == NULL) {
                 continue;
             }
-            //TODO decode
+            char *message = NULL;
+            message = decode(*fileName);
+            printf("INFO: secret message extracted from file is: %s\n", message);
         }else {
             //TODO cleanup & exit
             break;
