@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+
 char *getFileExtension(char *fileName) {
     return strchr(fileName, '.');
 }
@@ -19,4 +20,14 @@ bool ableToEncode(unsigned int fileDataSize, unsigned int secretMessageSize) {
         return 0;
     }
     return 1;
+}
+
+SupportedExtension getSupportedExtEnum(const char *fileExt) {
+    if (!strcmp(fileExt, ".bmp")) {
+        return BMP;
+    }
+    if (!strcmp(fileExt, ".wav")) {
+        return WAV;
+    }
+    return UNDEFINED;
 }

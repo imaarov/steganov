@@ -6,7 +6,7 @@
 #include "../include/utils.h"
 #define BMP_HEADER_SIZE 2
 #define BMP_FILE_LEN_SIZE 2
-#define BMP_HEADER_SIGNATURE 0x424d
+#define BMP_HEADER_SIGNATURE 0x424d    // signature of BMP header (BM)
 
 typedef struct BMPHeaderFile {
     unsigned short startHeader;

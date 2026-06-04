@@ -36,7 +36,7 @@ bool encodeBMP(FILE *file, char *secretMessage) {
     unsigned int sizeOfByteMessage = sizeof(messageLength);
     unsigned int sizeInBit = sizeOfByteMessage * 8;
     if (ableToEncode(decimalFileSize - decimalPixelOffset, sizeOfByteMessage * 8)) {
-        for (int i = 0; i < sizeInBit; i++) {
+        for (unsigned int i = 0; i < sizeInBit; i++) {
             Byte c = fgetc(file);
             c = (c & 0b11111110) | ((messageLength >> (sizeInBit - 1 - i)) & 0b00000001);
 
@@ -91,7 +91,7 @@ char *decodeBMP(FILE *file) {
 
     unsigned int sizeInBit = sizeof(unsigned int) * 8;
     Byte byteSize = 0;
-    for (int i = 0; i < sizeInBit; i++) {
+    for (unsigned int i = 0; i < sizeInBit; i++) {
         Byte c = fgetc(file);
         c = (c & 0b00000001) << (sizeInBit - 1 - i);
         byteSize |= c;
