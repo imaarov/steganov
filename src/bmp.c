@@ -7,6 +7,7 @@
 bool headerSignatureIsNotStandard(Byte header[2]);
 Byte* getHeader(FILE *file);
 Byte *getSize(FILE *file);
+Byte* getFilePixelOffset(FILE *file);
 unsigned int hexaToDecimal(Byte *hexa, unsigned short size);
 
 bool encodeBMP(FILE *file, char *secretMessage) {
@@ -24,15 +25,14 @@ bool encodeBMP(FILE *file, char *secretMessage) {
     unsigned int messageLength = strlen(secretMessage);
     // after header and size traversing, the file pointer should be in (4 + 2) = 6
     // in the address of 10th byte to 13  we have the byte, where the pixels data is reside
-    Byte pixelOffset[4];
+    Byte *pixelOffset = NULL;
     fseek(file, 4, SEEK_CUR);
-    for (int i = 0; i < 4; i++) {
-        pixelOffset[i] = fgetc(file);
-    }
+    pixelOffset = getFilePixelOffset(file);
+    
     unsigned int decimalPixelOffset = hexaToDecimal(pixelOffset, 4);
     fseek(file, decimalPixelOffset, SEEK_SET);
     // encode the size of our message in a fixed position in the file
-    // the fixed position for locating the message size is 14 to 46 (typically the size of unsigned int is 4byte)
+    // the fixed position for locating the message size is 54 to 86 (typically the size of unsigned int is 4byte)
     unsigned int sizeOfByteMessage = sizeof(messageLength);
     unsigned int sizeInBit = sizeOfByteMessage * 8;
     if (ableToEncode(decimalFileSize - decimalPixelOffset, sizeOfByteMessage * 8)) {
@@ -82,10 +82,43 @@ bool encodeBMP(FILE *file, char *secretMessage) {
 }
 
 char *decodeBMP(FILE *file) {
-    //TODO implement
-    return NULL;
+    // goto position 10 to read the pixel offset
+    fseek(file, 10, SEEK_SET);
+    Byte *pixelOffset = getFilePixelOffset(file);
+    unsigned int decimalPixelOffset = hexaToDecimal(pixelOffset, 4);
+    printf("INFO: file pixel offset is %u\n", decimalPixelOffset);
+    fseek(file, decimalPixelOffset, SEEK_SET);
+
+    unsigned int sizeInBit = sizeof(unsigned int) * 8;
+    Byte byteSize = 0;
+    for (int i = 0; i < sizeInBit; i++) {
+        Byte c = fgetc(file);
+        c = (c & 0b00000001) << (sizeInBit - 1 - i);
+        byteSize |= c;
+    }
+    printf("INFO: the size of the message is : %u\n", byteSize);
+    char *message = malloc(sizeof(char) * byteSize);
+    for (int i = 0; i < byteSize; i++) {
+        Byte final = 0;
+        for (int b = 0; b < 8; b++) {
+            Byte c = fgetc(file);
+            c = (c & 0b00000001) << (7 - b);
+            final |= c;
+        }
+        message[i] = final;
+        final = 0;
+    }
+    free(pixelOffset);
+    return message;
 }
 
+Byte* getFilePixelOffset(FILE *file) {
+    Byte *pixelOffset = malloc(sizeof(Byte) * 4);
+    for (int i = 0; i < 4; i++) {
+        pixelOffset[i] = fgetc(file);
+    }
+    return pixelOffset;
+}
 Byte* getHeader(FILE *file) {
     Byte *header = malloc(sizeof(Byte) * 2);
     for (int i = 0; i < BMP_HEADER_SIZE; i++) {
