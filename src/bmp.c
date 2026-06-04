@@ -23,8 +23,8 @@ bool encodeBMP(FILE *file, char *secretMessage) {
     size = getSize(file);
     unsigned int decimalFileSize = hexaToDecimal(size, 4);
     unsigned int messageLength = strlen(secretMessage);
-    // after header and size traversing, the file pointer should be in (4 + 2) = 6
-    // in the address of 10th byte to 13  we have the byte, where the pixels data is reside
+    // after traversing the header and size, the file pointer should be at (4 + 2) = 6
+    // at bytes 10 to 13, we have the value that indicates where the offset to the pixel data resides
     Byte *pixelOffset = NULL;
     fseek(file, 4, SEEK_CUR);
     pixelOffset = getFilePixelOffset(file);
@@ -32,7 +32,7 @@ bool encodeBMP(FILE *file, char *secretMessage) {
     unsigned int decimalPixelOffset = hexaToDecimal(pixelOffset, 4);
     fseek(file, decimalPixelOffset, SEEK_SET);
     // encode the size of our message in a fixed position in the file
-    // the fixed position for locating the message size is 54 to 86 (typically the size of unsigned int is 4byte)
+    // the fixed position for locating the message size is 54 to 58 (typically the size of an unsigned int is 4 bytes)
     unsigned int sizeOfByteMessage = sizeof(messageLength);
     unsigned int sizeInBit = sizeOfByteMessage * 8;
     if (ableToEncode(decimalFileSize - decimalPixelOffset, sizeOfByteMessage * 8)) {
@@ -50,13 +50,13 @@ bool encodeBMP(FILE *file, char *secretMessage) {
         return false;
     }
 
-    // for secret message sizes I multiplied it with 8, cause its LSB way for now, and 
-    // each bit of message need the least significant bit of a BYTE to alter that
-    // so in general for each byte of secret character we need 8 bytes to store them 
-    // because of the nature of the LSB
-    // we don't want to corrupt a file by editing the header area and read only area
-    // the decimalSize - decimalPixelOffset its for that, we don't count them
-    // cause those are header byte + reserved byte position
+    // for secret message sizes I multiplied it by 8, because it's LSB way for now, and
+    // each bit of a message needs the least significant bit of a BYTE to be altered
+    // so in general, for each byte of a secret character we need 8 bytes to store it
+    // because of the nature of LSB
+    // we don't want to corrupt a file by editing the header area and read-only area
+    // the decimalSize - decimalPixelOffset is for that, we don't count them
+    // because those are header bytes + reserved byte positions
     if (ableToEncode(decimalFileSize - decimalPixelOffset - 32, messageLength * 8)) {
         for (unsigned int i = 0; i < messageLength; i++) {
             for (int b = 0; b < 8; b++) {
