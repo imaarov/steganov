@@ -2,7 +2,8 @@
 #define BMP_H
 
 #include <stdio.h>
-#include "encode.h"
+#include <stdbool.h>
+#include "../include/utils.h"
 #define BMP_HEADER_SIZE 2
 #define BMP_FILE_LEN_SIZE 2
 #define BMP_HEADER_SIGNATURE 0x424d

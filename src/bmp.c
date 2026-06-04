@@ -1,4 +1,5 @@
 #include "../include/bmp.h"
+#include "../include/utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
