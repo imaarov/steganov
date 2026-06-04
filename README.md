@@ -28,9 +28,9 @@ In other words, we should have one byte of file data for each 1 bit of your mess
 
 
 # TODO
-- [x] get start with one file type (start with bmp)
-- [x] read the file size and header and verify it
-- [] implement the basic way of steganography (LSB) and complete the encoding
-- [] implement decoding from file
-- [] implement huffman algorithm for encode/decode, and give the user option to select from available algorithms for encode/decode
-- [] implement recovery mod after some operation failed to recover the file binary to what it was
+- [x] Get started with one file type (starting with BMP)
+- [x] Read the file size and header, and verify them
+- [x] Implement the basic steganography method (LSB) and complete the encoding process
+- [x] Implement decoding from a file
+- [ ] Implement the Huffman algorithm for encoding/decoding, and give the user the option to select from the available algorithms
+- [ ] Implement a recovery mode to restore the file contents if an operation fails
