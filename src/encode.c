@@ -5,7 +5,13 @@
 #include <string.h>
 
 bool encode(char *fileName, char *secretMessage) {
-    SupportedExtension ext = getSupportedExtEnum(getFileExtension(fileName));
+    const char *fileExt = getFileExtension(fileName);
+    if (fileExt == NULL) {
+        printf("ERROR: there is no file extension /:\n");
+        return false;
+    }
+    SupportedExtension ext = getSupportedExtEnum(fileExt);
+    printf("supported is : %d\n", ext);
     if (ext == UNDEFINED) {
         printf("INFO: File type is not supported\n");
         return false;
