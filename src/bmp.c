@@ -43,7 +43,7 @@ bool encodeBMP(FILE *file, char *secretMessage) {
             for (int b = 0; b < 8; b++) {
                 Byte c = fgetc(file);
                 Byte bitMessage = (secretMessage[i] >> (7 - b)) & 0b00000001;
-                c = (c & 0xFE) | bitMessage;
+                c = (c & 0x11111110) | bitMessage;
 
                 fseek(file, -1, SEEK_CUR);
                 fputc(c, file);
