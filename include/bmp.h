@@ -9,10 +9,11 @@
 
 typedef struct BMPHeaderFile {
     unsigned short startHeader;
-    Byte header[BMP_HEADER_SIZE];             // header file of bmp, 0x42 0x4d
+    Byte header[BMP_HEADER_SIZE];             // header file of bmp is 0x42 0x4d
     Byte size[4];
 } BMPHeaderFile;
 
 bool encodeBMP(FILE *file,char *secretMessage);
+char *decodeBMP(FILE *file);
 
 #endif

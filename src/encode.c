@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+char *getFileExtension(char *fileName);
+
 bool encode(char *fileName, char *secretMessage) {
     FILE *file = fopen(fileName, "rb+");
     printf("TRY OPENING: [%s]\n", fileName);
@@ -10,9 +12,7 @@ bool encode(char *fileName, char *secretMessage) {
         printf("failed to open the file named: %s\n", fileName);
         return false;
     }
-
-    char *fileExtension = strchr(fileName, '.');
-    if (strcmp(".bmp", fileExtension)) {
+    if (strcmp(".bmp", getFileExtension(fileName))) {
         printf("INFO: File type is not supported\n");
         return false;
     }
@@ -26,6 +26,10 @@ bool encode(char *fileName, char *secretMessage) {
     // clean up
     fclose(file);
     return true;
+}
+
+char *getFileExtension(char *fileName) {
+    return strchr(fileName, '.');
 }
 
 unsigned int hexaToDecimal(Byte *hexa, unsigned short size) {
