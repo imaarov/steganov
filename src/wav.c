@@ -1,5 +1,6 @@
 #include "../include/wav.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define CHUNK_ID_FMT  "fmt "
@@ -34,7 +35,7 @@ bool encodeWAV(FILE *file, char *secretMessage) {
     if (ableToEncode(decimalDataChunk - messageSizeBits, strlen(secretMessage) * 8)) {
         // embed the header of the steganography, which is the size of unsigned int, containing message size
         unsigned char secretMessageSize = strlen(secretMessage);
-        for (int i = 0; i < messageSizeBits; i++) {
+        for (unsigned int i = 0; i < messageSizeBits; i++) {
             Byte sample[2];                                     //TODO here we ASSUME(which is bad idea to assume anything
                                                                 //in this project) that each sample is 16bit (bits per sample)
                                                                 //so i should fix it
@@ -68,6 +69,52 @@ bool encodeWAV(FILE *file, char *secretMessage) {
     }
 
     return true;
+}
+
+char *decodeWAV(FILE *file) {
+    if (!readStandardHeaderInfo(file)) {
+        return NULL;
+    }
+    if (!readChunksUntilData(&file)) {
+        printf("ERROR: failed to read until found the data chunk identifier\n");
+        return NULL;
+    }
+    Byte dataChunkSize[4];
+    if (fread(dataChunkSize, sizeof(Byte), 4, file) != 4) {
+        printf("ERROR: can not read the data chunk's size\n");
+        return NULL;
+    }
+
+    unsigned int sizeInBit = sizeof(unsigned int) * 2;
+    unsigned int messageSize = 0;
+    Byte mask = 0b00000001;
+    for (unsigned int i = 0; i < sizeInBit; i++) {
+        Byte sample[2];
+        if (fread(sample, sizeof(Byte), 2, file) != 2) {
+            printf("ERROR: failed to read a sample from file\n");
+            return NULL;
+        }
+        messageSize |= ((sample[0] & 0b00000001) << (7 - i));           // TODO apparently i store in big endian
+        mask >>= 1;
+    }
+    printf("INFO: size of the message is : %u\n", messageSize);
+
+    Byte *message = malloc(sizeof(Byte) * messageSize);
+    for (unsigned int i = 0; i < messageSize; i++) {
+        Byte c = 0;
+        for (int b = 0; b < 8; b++) {
+            Byte sample[2];
+            if (fread(sample, sizeof(Byte), 2, file) != 2) {
+                printf("ERROR: failed to read a sample\n");
+                return NULL;
+            }
+            c |= ((sample[0] & 0b00000001) << (7 - b));
+        }
+        message[i] = c;
+        c = 0;
+    }
+    printf("INFO: secret message is : %s \n", message);
+    return (char *)message;
 }
 
 bool readStandardHeaderInfo(FILE *file) {
@@ -227,10 +274,6 @@ bool readLISTChunk(FILE *file) {
                                                                            // decimal - (8 = 4(INFO) + 4(ISFT))
     
     return true;
-}
-
-char *decodeWAV(FILE *file) {
-    return NULL;
 }
 
 bool signatureIsNotValid(Byte *headerSignature) {
