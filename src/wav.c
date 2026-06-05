@@ -22,7 +22,38 @@ bool encodeWAV(FILE *file, char *secretMessage) {
     if (!readChunksUntilData(&file)) {
         return false;
     }
-    return false;
+    // data chunk id passed, now at the data chunk size
+    Byte dataChunkSize[4];
+    if (fread(dataChunkSize, sizeof(Byte), 4, file) != 4) {
+        printf("ERROR: can not read the data chunk's size\n");
+        return false;
+    }
+    unsigned int decimalDataChunk = hexaToDecimal(dataChunkSize, 4);
+    printf("INFO: data chunk size: %d\n", decimalDataChunk);
+    unsigned int messageSizeBits = sizeof(unsigned int) * 2;            //TODO its just a standard that how to save secret message size
+    if (ableToEncode(decimalDataChunk - messageSizeBits, strlen(secretMessage) * 8)) {
+        // embed the header of the steganography, which is the size of unsigned int, containing message size
+        unsigned char secretMessageSize = strlen(secretMessage);
+        for (int i = 0; i < messageSizeBits; i++) {
+            Byte sample[2];                                     //TODO here we ASSUME(which is bad idea to assume anything
+                                                                //in this project) that each sample is 16bit (bits per sample)
+                                                                //so i should fix it
+            if (fread(sample, sizeof(Byte), 2, file) != 2) {
+                printf("ERROR: failed to read a sample (2byte) of a file\n");
+                return false;
+            }
+            sample[0] = (sample[0] & 0b11111110) | (0b00000001 & (secretMessageSize >> (messageSizeBits - 1 - i)));
+            fseek(file, -2, SEEK_CUR);
+            fputc(sample[0], file);
+            fseek(file, 1, SEEK_CUR);
+        }
+
+    }else {
+        printf("ERROR: can not embed message in this file\n");
+        return false;
+    }
+
+    return true;
 }
 
 bool readStandardHeaderInfo(FILE *file) {
