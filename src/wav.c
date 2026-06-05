@@ -2,50 +2,26 @@
 #include <stdio.h>
 #include <string.h>
 
+#define CHUNK_ID_FMT  "fmt "
+#define CHUNK_ID_LIST "LIST"
+#define CHUNK_ID_DATA "data"
+
 bool signatureIsNotValid(Byte *headerSignature);
 bool readStandardHeaderInfo(FILE *file);
 bool readFMTChunk(FILE *file);
 bool skipChunk(FILE *file);
 bool readLISTChunk(FILE *file);
+bool readChunksUntilData(FILE **file);
 
 bool encodeWAV(FILE *file, char *secretMessage) {
     // read standard header information, signature, size, format type
     if (!readStandardHeaderInfo(file)) {
         return false;
     }
-    fseek(file, 12, SEEK_SET); // jump right after the standard header, to see the chunk id
-    Byte chunkIDFormat[4];
-    if (fread(chunkIDFormat, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: Failed to read chunk id in header\n");
+    printf("\n");
+    if (!readChunksUntilData(&file)) {
         return false;
     }
-    printf("INFO: chunk id : %.4s\n", chunkIDFormat);
-
-    if (strcmp("fmt", (const char *)chunkIDFormat) == 0) {
-        if (!readFMTChunk(file)) {
-            return false;
-        }
-    }else { // handle some weird type of format that i don't support, just skip it
-        if (!skipChunk(file)) {
-            return false;
-        }
-    }
-    Byte chunkIDList[4];
-    if (fread(chunkIDList, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: failed to read teh chunk list id in header\n");
-        return false;
-    }
-    printf("INFO: chunk id : %.4s\n", chunkIDList);
-    if (strcmp("LIST", (const char *)chunkIDList) == 0) {
-        if (!readLISTChunk(file)) {
-            return false;
-        }
-    }else { // handle some weird type beside LIST that i don't support and do not care at all, just skip it
-        if (!skipChunk(file)) {
-            return false;
-        }
-    }
-
     return false;
 }
 
@@ -74,6 +50,38 @@ bool readStandardHeaderInfo(FILE *file) {
         return false;
     }
     printf("INFO: format type is : %.4s\n", format);
+    return true;
+}
+
+bool readChunksUntilData(FILE **file) {
+    while (1) {
+        Byte chunkID[5] = {0};
+        if (fread(chunkID, sizeof(Byte), 4, *file) != 4) {
+            printf("ERROR: Failed to read chunk id in header\n");
+            return false;
+        }
+        printf("INFO: chunk id : %.4s\n", chunkID);
+
+        if (strcmp(CHUNK_ID_FMT, (const char *)chunkID) == 0) {
+            if (!readFMTChunk(*file)) {
+                return false;
+            }
+            printf("\n");
+            continue;
+        }
+        if (strcmp(CHUNK_ID_LIST, (const char *)chunkID) == 0) {
+            if (!readLISTChunk(*file)) {
+                return false;
+            }
+            printf("\n");
+            continue;
+        }
+
+        if (strcmp(CHUNK_ID_DATA, (const char *)chunkID) == 0) {
+            return true;
+        }
+        skipChunk(*file);
+    }
     return true;
 }
 
