@@ -48,6 +48,20 @@ bool encodeWAV(FILE *file, char *secretMessage) {
             fseek(file, 1, SEEK_CUR);
         }
 
+        for (int i = 0; i < secretMessageSize; i++) {
+            for (int b = 0; b < 8; b++) {
+                Byte sample[2];
+                if (fread(sample, sizeof(Byte), 2, file) != 2) {
+                    printf("ERROR: failed to read the a sample of audio\n");
+                    return false;
+                }
+                sample[0] = (sample[0] & 0b11111110) | ((secretMessage[i] >> (7 - b)) & 0b00000001);
+                fseek(file, -2, SEEK_CUR);
+                fputc(sample[0], file);
+                fseek(file, 1, SEEK_CUR);
+            }
+        }
+
     }else {
         printf("ERROR: can not embed message in this file\n");
         return false;
