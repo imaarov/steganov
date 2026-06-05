@@ -25,9 +25,12 @@ unsigned int minimumFileSize = strlen(data) * 8 // file size in bytes;
 ```
 
 In other words, we should have one byte of file data for each 1 bit of your message or data plan to embed it, the math above its not accurate because we should subtract it by the header size of the file plus the reserved size, because we don't want to corrupt the file, we should not manipulate positions that are not meant to be modified.
+### Supported File Types:
+- BMP
+- WAV
 
 
-# TODO
+## TODO
 - [x] Get started with one file type (starting with BMP)
 - [x] Read the file size and header, and verify them
 - [x] Implement the basic steganography method (LSB) and complete the encoding process
