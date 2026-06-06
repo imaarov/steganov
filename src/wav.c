@@ -19,10 +19,13 @@ bool encodeWAV(FILE *file, char *secretMessage) {
     if (!readStandardHeaderInfo(file)) {
         return false;
     }
+    // read all of the chunks after the standard header until the data chunk
     if (!readChunksUntilData(&file)) {
         return false;
     }
-    // data chunk id passed, now at the data chunk size
+
+    // read data chunk id in readChunksUntilData functoin
+    // now read the data chunk size, then the actual data chunk starts
     Byte dataChunkSize[4];
     if (fread(dataChunkSize, sizeof(Byte), 4, file) != 4) {
         FATAL("can not read the data chunk's size");
@@ -98,7 +101,8 @@ char *decodeWAV(FILE *file) {
     }
     DEBUG("size of the message is : %u", messageSize);
 
-    Byte *message = malloc(sizeof(Byte) * messageSize);
+    Byte *message = malloc(sizeof(Byte) * messageSize + 1);
+    memset(message, 0, messageSize + 1); // prevent from reading out of scope of a string (in other words, add null terminator)
     for (unsigned int i = 0; i < messageSize; i++) {
         Byte c = 0;
         for (int b = 0; b < 8; b++) {

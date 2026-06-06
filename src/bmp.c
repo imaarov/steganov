@@ -99,7 +99,8 @@ char *decodeBMP(FILE *file) {
         byteSize |= c;
     }
     DEBUG("the size of the message is : %u\n", byteSize);
-    char *message = malloc(sizeof(char) * byteSize);
+    char *message = malloc(sizeof(char) * byteSize + 1);
+    memset(message, 0, byteSize + 1);
     for (int i = 0; i < byteSize; i++) {
         Byte final = 0;
         for (int b = 0; b < 8; b++) {
