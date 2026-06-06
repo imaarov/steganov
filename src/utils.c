@@ -16,10 +16,7 @@ unsigned int hexaToDecimal(Byte *hexa, unsigned short size) {
 }
 
 bool ableToEncode(unsigned int fileDataSize, unsigned int secretMessageSize) {
-    if (fileDataSize < secretMessageSize) {
-        return 0;
-    }
-    return 1;
+    return fileDataSize >= secretMessageSize;
 }
 
 SupportedExtension getSupportedExtEnum(const char *fileExt) {

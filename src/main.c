@@ -1,8 +1,8 @@
-#include <stdlib.h>
-#include <string.h>
 #define VERSION "1.0.0"
 #define MAX_FILE_NAME_LEN 255
 #define MAX_SECRET_MESSAGE_LEN 255
+#include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include "../include/encode.h"
 #include "../include/decode.h"
