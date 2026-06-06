@@ -6,6 +6,11 @@
 #include <string.h>
 
 char *decode(char *fileName) {
+    fileName      = getFileName();
+    if (fileName == NULL) {
+        FATAL("file name should not be empty");
+        return NULL;
+    }
     const char *fileExt = getFileExtension(fileName);
     if (fileExt == NULL) {
         FATAL("there is no file extension /:\n");

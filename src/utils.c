@@ -1,6 +1,10 @@
+#define MAX_FILE_NAME_LEN      255
+#define MAX_SECRET_MESSAGE_LEN 255
 #include "../include/utils.h"
 #include <string.h>
+#include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 
 char *getFileExtension(char *fileName) {
@@ -27,4 +31,30 @@ SupportedExtension getSupportedExtEnum(const char *fileExt) {
         return WAV;
     }
     return UNDEFINED;
+}
+
+char* getSecret() {
+    char *secretMessage = malloc(sizeof(char) * MAX_SECRET_MESSAGE_LEN);
+    memset(secretMessage, 0, sizeof(char) * MAX_SECRET_MESSAGE_LEN);
+    printf("enter the secret message you want to be encoded in data: \n");
+    void *buff = fgets(secretMessage, MAX_SECRET_MESSAGE_LEN, stdin);
+    if (buff == NULL) {
+        printf("ERROR: Failed to read user input from stdin\n");
+        return NULL;
+    }
+    secretMessage[strcspn(secretMessage, "\r\n")] = 0;
+    return secretMessage;
+}
+
+char* getFileName() {
+    char *fileName = malloc(sizeof(char) * MAX_FILE_NAME_LEN);
+    memset(fileName, 0, sizeof(char) * MAX_FILE_NAME_LEN);
+    printf("enter the file name where data should encode/decode there: \n");
+    void *buff = fgets(fileName, MAX_FILE_NAME_LEN, stdin);
+    if (buff == NULL) {
+        printf("ERROR: Failed to read user input from stdin\n");
+        return NULL;
+    }
+    fileName[strcspn(fileName, "\r\n")] = 0;
+    return fileName;
 }

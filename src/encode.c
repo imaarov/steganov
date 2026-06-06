@@ -2,9 +2,18 @@
 #include "../include/bmp.h"
 #include "../include/wav.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 bool encode(char *fileName, char *secretMessage) {
+    fileName      = getFileName();
+    secretMessage = getSecret();
+    if (fileName == NULL || secretMessage == NULL) {
+        free(fileName);
+        free(secretMessage);
+        printf("WARNING: file name or secret message should not be empty\n");
+        return false;
+    }
     const char *fileExt = getFileExtension(fileName);
     if (fileExt == NULL) {
         FATAL("there is no file extension /:\n");

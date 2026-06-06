@@ -14,6 +14,12 @@
 #endif
 
 typedef enum {
+    ENCODE = 1,
+    DECODE = 2,
+    EXIT   = 3
+} Operation;
+
+typedef enum {
     BMP = 0,
     WAV = 1,
     UNDEFINED = 2
@@ -22,6 +28,8 @@ typedef enum {
 
 typedef unsigned char Byte;
 char *getFileExtension(char *fileName);
+char* getFileName();
+char* getSecret();
 unsigned int hexaToDecimal(Byte *hexa, unsigned short size);
 bool ableToEncode(unsigned int fileSize, unsigned int messaegSize);
 SupportedExtension getSupportedExtEnum(const char *fileExt);
