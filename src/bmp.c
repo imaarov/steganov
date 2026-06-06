@@ -34,11 +34,10 @@ bool encodeBMP(FILE *file, char *secretMessage) {
     // encode the size of our message in a fixed position in the file
     // the fixed position for locating the message size is 54 to 58 (typically the size of an unsigned int is 4 bytes)
     unsigned int sizeOfByteMessage = sizeof(messageLength);
-    unsigned int sizeInBit = sizeOfByteMessage * 8;
     if (ableToEncode(decimalFileSize - decimalPixelOffset, sizeOfByteMessage * 8)) {
-        for (unsigned int i = 0; i < sizeInBit; i++) {
+        for (unsigned int i = 0; i < BMP_STEG_HEADER_SIZE; i++) {
             Byte c = fgetc(file);
-            c = (c & 0b11111110) | ((messageLength >> (sizeInBit - 1 - i)) & 0b00000001);
+            c = (c & 0b11111110) | ((messageLength >> (BMP_STEG_HEADER_SIZE- 1 - i)) & 0b00000001);
 
             fseek(file, -1, SEEK_CUR);
             fputc(c, file);
@@ -57,7 +56,7 @@ bool encodeBMP(FILE *file, char *secretMessage) {
     // we don't want to corrupt a file by editing the header area and read-only area
     // the decimalSize - decimalPixelOffset is for that, we don't count them
     // because those are header bytes + reserved byte positions
-    if (ableToEncode(decimalFileSize - decimalPixelOffset - 32, messageLength * 8)) {
+    if (ableToEncode(decimalFileSize - decimalPixelOffset - BMP_STEG_HEADER_SIZE, messageLength * 8)) {
         for (unsigned int i = 0; i < messageLength; i++) {
             for (int b = 0; b < 8; b++) {
                 Byte c = fgetc(file);
@@ -91,11 +90,10 @@ char *decodeBMP(FILE *file) {
     DEBUG("file pixel offset is %u\n", decimalPixelOffset);
     fseek(file, decimalPixelOffset, SEEK_SET);
 
-    unsigned int sizeInBit = sizeof(unsigned int) * 8;
     Byte byteSize = 0;
-    for (unsigned int i = 0; i < sizeInBit; i++) {
+    for (unsigned int i = 0; i < BMP_STEG_HEADER_SIZE; i++) {
         Byte c = fgetc(file);
-        c = (c & 0b00000001) << (sizeInBit - 1 - i);
+        c = (c & 0b00000001) << (BMP_STEG_HEADER_SIZE - 1 - i);
         byteSize |= c;
     }
     DEBUG("the size of the message is : %u\n", byteSize);

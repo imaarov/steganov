@@ -4,8 +4,14 @@
 #include "../include/utils.h"
 #include <stdbool.h>
 #include <stdio.h>
-#define WAV_HEADER_SIZE 4
-#define WAV_HEADER_SIGNATURE 0x46464952    // signature of WAV RIFF header (RIFF) in little endian
+
+#define WAV_HEADER_SIZE                 4
+#define WAV_HEADER_SIGNATURE            0x46464952    // signature of WAV RIFF header (RIFF) in little endian
+#define WAV_DEFAULT_BITS_PER_SAMPLE     16
+#define WAV_STEG_HEADER_SIZE            8
+#define WAV_CHUNK_ID_FMT                "fmt "
+#define WAV_CHUNK_ID_LIST               "LIST"
+#define WAV_CHUNK_ID_DATA               "data"
 
 typedef struct WAVHeaderFile {
     Byte headerSignature[4];    // file signature, RIFF

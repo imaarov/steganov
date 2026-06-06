@@ -3,10 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHUNK_ID_FMT  "fmt "
-#define CHUNK_ID_LIST "LIST"
-#define CHUNK_ID_DATA "data"
-
 bool signatureIsNotValid(Byte *headerSignature);
 bool readStandardHeaderInfo(FILE *file);
 bool readFMTChunk(FILE *file);
@@ -33,19 +29,18 @@ bool encodeWAV(FILE *file, char *secretMessage) {
     }
     unsigned int decimalDataChunk = hexaToDecimal(dataChunkSize, 4);
     DEBUG("data chunk size: %d\n", decimalDataChunk);
-    unsigned int messageSizeBits = sizeof(unsigned int) * 2;            //TODO its just a standard that how to save secret message size
-    if (ableToEncode(decimalDataChunk - messageSizeBits, strlen(secretMessage) * 8)) {
+    if (ableToEncode(decimalDataChunk - WAV_STEG_HEADER_SIZE, strlen(secretMessage) * 8)) {
         // embed the header of the steganography, which is the size of unsigned int, containing message size
         unsigned char secretMessageSize = strlen(secretMessage);
-        for (unsigned int i = 0; i < messageSizeBits; i++) {
-            Byte sample[2];                                     //TODO here we ASSUME(which is bad idea to assume anything
-                                                                //in this project) that each sample is 16bit (bits per sample)
-                                                                //so i should fix it
+        for (unsigned int i = 0; i < WAV_STEG_HEADER_SIZE; i++) {
+            Byte sample[2];                                             //TODO here we ASSUME(which is bad idea to assume anything
+                                                                        //in this project) that each sample is 16bit (bits per sample)
+                                                                        //so i should fix it
             if (fread(sample, sizeof(Byte), 2, file) != 2) {
                 FATAL("failed to read a sample");
                 return false;
             }
-            sample[0] = (sample[0] & 0b11111110) | (0b00000001 & (secretMessageSize >> (messageSizeBits - 1 - i)));
+            sample[0] = (sample[0] & 0b11111110) | (0b00000001 & (secretMessageSize >> (WAV_STEG_HEADER_SIZE - 1 - i)));
             fseek(file, -2, SEEK_CUR);
             fputc(sample[0], file);
             fseek(file, 1, SEEK_CUR);
@@ -87,10 +82,9 @@ char *decodeWAV(FILE *file) {
         return NULL;
     }
 
-    unsigned int sizeInBit = sizeof(unsigned int) * 2;
     unsigned int messageSize = 0;
     Byte mask = 0b00000001;
-    for (unsigned int i = 0; i < sizeInBit; i++) {
+    for (unsigned int i = 0; i < WAV_STEG_HEADER_SIZE; i++) {
         Byte sample[2];
         if (fread(sample, sizeof(Byte), 2, file) != 2) {
             FATAL("failed to read a sample from file");
@@ -157,20 +151,20 @@ bool readChunksUntilData(FILE **file) {
         }
         DEBUG("INFO: chunk id : %.4s\n", chunkID);
 
-        if (strcmp(CHUNK_ID_FMT, (const char *)chunkID) == 0) {
+        if (strcmp(WAV_CHUNK_ID_FMT, (const char *)chunkID) == 0) {
             if (!readFMTChunk(*file)) {
                 return false;
             }
             continue;
         }
-        if (strcmp(CHUNK_ID_LIST, (const char *)chunkID) == 0) {
+        if (strcmp(WAV_CHUNK_ID_LIST, (const char *)chunkID) == 0) {
             if (!readLISTChunk(*file)) {
                 return false;
             }
             continue;
         }
 
-        if (strcmp(CHUNK_ID_DATA, (const char *)chunkID) == 0) {
+        if (strcmp(WAV_CHUNK_ID_DATA, (const char *)chunkID) == 0) {
             return true;
         }
         skipChunk(*file);
@@ -212,6 +206,8 @@ bool readFMTChunk(FILE *file) {
         FATAL("Failed to read the bits per sample in header of FMT");
         return false;
     }
+    unsigned int decimalBitsPerSample = hexaToDecimal(bitsPerSample, 2);
+    DEBUG("bits per sample is : %d", decimalBitsPerSample);
     if (decimalChunkSize > 16) {  // weird but whatever
         fseek(file, decimalChunkSize - 16, SEEK_CUR);
     }
