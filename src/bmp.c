@@ -5,9 +5,9 @@
 #include <string.h>
 
 bool headerSignatureIsNotStandard(Byte header[2]);
-Byte* getHeader(FILE *file);
+Byte *getHeader(FILE *file);
 Byte *getSize(FILE *file);
-Byte* getFilePixelOffset(FILE *file);
+Byte *getFilePixelOffset(FILE *file);
 unsigned int hexaToDecimal(Byte *hexa, unsigned short size);
 
 bool encodeBMP(FILE *file, char *secretMessage) {
