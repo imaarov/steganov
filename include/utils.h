@@ -12,6 +12,8 @@
     #define DEBUG(msg, ...)
     #define FATAL(msg, ...)
 #endif
+#define MAX_FILE_NAME_LEN      255
+#define MAX_SECRET_MESSAGE_LEN 255
 
 typedef enum {
     ENCODE = 1,
