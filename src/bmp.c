@@ -16,7 +16,7 @@ bool encodeBMP(FILE *file, char *secretMessage) {
     Byte *size   = NULL;
     header = getHeader(file);
     if (headerSignatureIsNotStandard(header)) {
-        printf("ERROR: the file signature is not the same as standard BMP signature\n");
+        FATAL("the file signature is not the same as standard BMP signature");
         free(header);
         return 0;
     }
@@ -44,7 +44,7 @@ bool encodeBMP(FILE *file, char *secretMessage) {
             fputc(c, file);
         }
     } else {
-        printf("ERROR: failed to encode file size\n");
+        FATAL("failed to encode file size, message size exceeds file capacity");
         free(header);
         free(size);
         return false;
@@ -69,8 +69,10 @@ bool encodeBMP(FILE *file, char *secretMessage) {
             }
         }
     }else {
-        printf("ERROR: its not possible to store message data in the file because of the file size\n");
-        printf("INFO: file size: %u, message size: %lu\n", decimalFileSize, strlen(secretMessage));
+        FATAL("its not possible to store message data in the file because of the file size");
+        DEBUG("file size: %u, message size: %lu\n", decimalFileSize, strlen(secretMessage));
+        free(header);
+        free(size);
         return 0;
     }
 
@@ -86,7 +88,7 @@ char *decodeBMP(FILE *file) {
     fseek(file, 10, SEEK_SET);
     Byte *pixelOffset = getFilePixelOffset(file);
     unsigned int decimalPixelOffset = hexaToDecimal(pixelOffset, 4);
-    printf("INFO: file pixel offset is %u\n", decimalPixelOffset);
+    DEBUG("file pixel offset is %u\n", decimalPixelOffset);
     fseek(file, decimalPixelOffset, SEEK_SET);
 
     unsigned int sizeInBit = sizeof(unsigned int) * 8;
@@ -96,7 +98,7 @@ char *decodeBMP(FILE *file) {
         c = (c & 0b00000001) << (sizeInBit - 1 - i);
         byteSize |= c;
     }
-    printf("INFO: the size of the message is : %u\n", byteSize);
+    DEBUG("the size of the message is : %u\n", byteSize);
     char *message = malloc(sizeof(char) * byteSize);
     for (int i = 0; i < byteSize; i++) {
         Byte final = 0;
@@ -138,13 +140,13 @@ Byte *getSize(FILE *file) {
 }
 
 bool headerSignatureIsNotStandard(Byte header[2]) {
-    printf("CHECKING: check the file header signature\n");
+    DEBUG("check the file header signature\n");
     int signature = header[0] << 8 | header[1];
     if (signature != BMP_HEADER_SIGNATURE) {
         printf("%02x\n", signature);
         return 1;
     }
-    printf("CHECKED: File Signature is OK\n");
+    DEBUG("File Signature is OK\n");
     return 0;
 }
 

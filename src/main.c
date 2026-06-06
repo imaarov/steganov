@@ -16,7 +16,7 @@ int main() {
     char *secretMessage = NULL;
     char *fileName = NULL;
     prompt(&fileName, &secretMessage);
-    printf("DEBUG: fileName: %s, secretMessage: %s\n", fileName, secretMessage);
+    printf("fileName: %s, secretMessage: %s\n", fileName, secretMessage);
     printf("the format of the file is : %s\n", fileName);
 
 
@@ -42,7 +42,12 @@ void prompt(char **fileName, char **secretMessage) {
             if (*fileName == NULL || *secretMessage == NULL) {
                 continue;
             }
-            encode(*fileName, *secretMessage);
+            bool status = encode(*fileName, *secretMessage);
+            if (status) {
+                printf("INFO: successful encoding\n");
+            }else {
+                printf("INFO: failed to encoding\n");
+            }
         }else if(userOption == 2) { // decoding
             *fileName      = getFileName();
             if (*fileName == NULL) {

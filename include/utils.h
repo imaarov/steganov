@@ -1,13 +1,24 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <stdbool.h>
+
+#ifdef DEBUG
+    #define DEBUG(msg, ...)      \
+        printf("[DEBUG]: %s:%d:" msg "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+    #define FATAL(msg, ...)      \
+        printf("[ERROR]: %s:%d:" msg "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#else
+    #define DEBUG(msg, ...)
+    #define FATAL(msg, ...)
+#endif
+
 typedef enum {
     BMP = 0,
     WAV = 1,
     UNDEFINED = 2
 } SupportedExtension;
 
-#include <stdbool.h>
 
 typedef unsigned char Byte;
 char *getFileExtension(char *fileName);

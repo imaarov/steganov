@@ -7,18 +7,18 @@
 bool encode(char *fileName, char *secretMessage) {
     const char *fileExt = getFileExtension(fileName);
     if (fileExt == NULL) {
-        printf("ERROR: there is no file extension /:\n");
+        FATAL("there is no file extension /:\n");
         return false;
     }
     SupportedExtension ext = getSupportedExtEnum(fileExt);
-    printf("supported is : %d\n", ext);
+    DEBUG("supported is : %d\n", ext);
     if (ext == UNDEFINED) {
-        printf("INFO: File type is not supported\n");
+        FATAL("File type is not supported\n");
         return false;
     }
     FILE *file = fopen(fileName, "rb+");
     if (file == NULL) {
-        printf("failed to open the file named: %s\n", fileName);
+        FATAL("failed to open the file named: %s\n", fileName);
         return false;
     }
     bool status = false;
@@ -30,15 +30,14 @@ bool encode(char *fileName, char *secretMessage) {
              status = encodeWAV(file, secretMessage);
              break;
         case UNDEFINED: // for the sake of my stupid lsp, ik i should not do that
-            printf("INFO: File type is not supported\n");
             return false;
 
     }
     if (!status) {
-        printf("INFO: Failed to encode\n");
+        FATAL("Failed to encode\n");
         return false;
     }
-    printf("INFO: Successful encoding operation\n");
+    DEBUG("Successful encoding operation\n");
 
     fclose(file);
     return true;

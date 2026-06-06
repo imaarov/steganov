@@ -19,18 +19,17 @@ bool encodeWAV(FILE *file, char *secretMessage) {
     if (!readStandardHeaderInfo(file)) {
         return false;
     }
-    printf("\n");
     if (!readChunksUntilData(&file)) {
         return false;
     }
     // data chunk id passed, now at the data chunk size
     Byte dataChunkSize[4];
     if (fread(dataChunkSize, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: can not read the data chunk's size\n");
+        FATAL("can not read the data chunk's size");
         return false;
     }
     unsigned int decimalDataChunk = hexaToDecimal(dataChunkSize, 4);
-    printf("INFO: data chunk size: %d\n", decimalDataChunk);
+    DEBUG("data chunk size: %d\n", decimalDataChunk);
     unsigned int messageSizeBits = sizeof(unsigned int) * 2;            //TODO its just a standard that how to save secret message size
     if (ableToEncode(decimalDataChunk - messageSizeBits, strlen(secretMessage) * 8)) {
         // embed the header of the steganography, which is the size of unsigned int, containing message size
@@ -40,7 +39,7 @@ bool encodeWAV(FILE *file, char *secretMessage) {
                                                                 //in this project) that each sample is 16bit (bits per sample)
                                                                 //so i should fix it
             if (fread(sample, sizeof(Byte), 2, file) != 2) {
-                printf("ERROR: failed to read a sample (2byte) of a file\n");
+                FATAL("failed to read a sample");
                 return false;
             }
             sample[0] = (sample[0] & 0b11111110) | (0b00000001 & (secretMessageSize >> (messageSizeBits - 1 - i)));
@@ -53,7 +52,7 @@ bool encodeWAV(FILE *file, char *secretMessage) {
             for (int b = 0; b < 8; b++) {
                 Byte sample[2];
                 if (fread(sample, sizeof(Byte), 2, file) != 2) {
-                    printf("ERROR: failed to read the a sample of audio\n");
+                    FATAL("failed to read the a sample of audio");
                     return false;
                 }
                 sample[0] = (sample[0] & 0b11111110) | ((secretMessage[i] >> (7 - b)) & 0b00000001);
@@ -64,7 +63,7 @@ bool encodeWAV(FILE *file, char *secretMessage) {
         }
 
     }else {
-        printf("ERROR: can not embed message in this file\n");
+        FATAL("cannot encode message in this file, message file exceeds file capacity");
         return false;
     }
 
@@ -76,12 +75,12 @@ char *decodeWAV(FILE *file) {
         return NULL;
     }
     if (!readChunksUntilData(&file)) {
-        printf("ERROR: failed to read until found the data chunk identifier\n");
+        FATAL("failed to find data chunk while reading the file");
         return NULL;
     }
     Byte dataChunkSize[4];
     if (fread(dataChunkSize, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: can not read the data chunk's size\n");
+        FATAL("can not read the data chunk's size");
         return NULL;
     }
 
@@ -91,13 +90,13 @@ char *decodeWAV(FILE *file) {
     for (unsigned int i = 0; i < sizeInBit; i++) {
         Byte sample[2];
         if (fread(sample, sizeof(Byte), 2, file) != 2) {
-            printf("ERROR: failed to read a sample from file\n");
+            FATAL("failed to read a sample from file");
             return NULL;
         }
         messageSize |= ((sample[0] & 0b00000001) << (7 - i));           // TODO apparently i store in big endian
         mask >>= 1;
     }
-    printf("INFO: size of the message is : %u\n", messageSize);
+    DEBUG("size of the message is : %u", messageSize);
 
     Byte *message = malloc(sizeof(Byte) * messageSize);
     for (unsigned int i = 0; i < messageSize; i++) {
@@ -105,7 +104,7 @@ char *decodeWAV(FILE *file) {
         for (int b = 0; b < 8; b++) {
             Byte sample[2];
             if (fread(sample, sizeof(Byte), 2, file) != 2) {
-                printf("ERROR: failed to read a sample\n");
+                FATAL("failed to read a sample");
                 return NULL;
             }
             c |= ((sample[0] & 0b00000001) << (7 - b));
@@ -113,35 +112,35 @@ char *decodeWAV(FILE *file) {
         message[i] = c;
         c = 0;
     }
-    printf("INFO: secret message is : %s \n", message);
+    DEBUG("secret message is : %s", message);
     return (char *)message;
 }
 
 bool readStandardHeaderInfo(FILE *file) {
     Byte headerSignature[4];
     if (fread(headerSignature, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: Failed to read header signature\n");
+        FATAL("Failed to read header signature");
         return false;
     }
-    printf("INfO: the header signature is : %.4s\n", headerSignature);
+    DEBUG("the header signature is : %.4s\n", headerSignature);
     if (signatureIsNotValid(headerSignature)) {
         return false;
     }
 
     Byte fileSize[4];
     if (fread(fileSize, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: Failed to read file size in header\n");
+        FATAL("Failed to read file size in header");
         return false;
     }
     unsigned int decimalFileSize = hexaToDecimal(fileSize, 4);
-    printf("INFO: file size is : %d kb\n", decimalFileSize + 8);
+    DEBUG("INFO: file size is : %d kb\n", decimalFileSize + 8);
 
     Byte format[4];
     if (fread(format, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: Failed to read format in header\n");
+        FATAL("Failed to read format in header");
         return false;
     }
-    printf("INFO: format type is : %.4s\n", format);
+    DEBUG("INFO: format type is : %.4s\n", format);
     return true;
 }
 
@@ -149,23 +148,21 @@ bool readChunksUntilData(FILE **file) {
     while (1) {
         Byte chunkID[5] = {0};
         if (fread(chunkID, sizeof(Byte), 4, *file) != 4) {
-            printf("ERROR: Failed to read chunk id in header\n");
+            FATAL("Failed to read chunk id in header");
             return false;
         }
-        printf("INFO: chunk id : %.4s\n", chunkID);
+        DEBUG("INFO: chunk id : %.4s\n", chunkID);
 
         if (strcmp(CHUNK_ID_FMT, (const char *)chunkID) == 0) {
             if (!readFMTChunk(*file)) {
                 return false;
             }
-            printf("\n");
             continue;
         }
         if (strcmp(CHUNK_ID_LIST, (const char *)chunkID) == 0) {
             if (!readLISTChunk(*file)) {
                 return false;
             }
-            printf("\n");
             continue;
         }
 
@@ -180,39 +177,35 @@ bool readChunksUntilData(FILE **file) {
 bool readFMTChunk(FILE *file) {
     Byte chunkSize[4];
     if (fread(chunkSize, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: failed to read the fmt chunk size in header\n");
+        FATAL("failed to read the fmt chunk size in header");
         return false;
     }
     unsigned int decimalChunkSize = hexaToDecimal(chunkSize, 4);
     Byte audioFormat[2];
     if (fread(audioFormat, sizeof(Byte), 2, file) != 2) {
-        printf("ERROR: Failed to read audio format in header\n");
+        FATAL("Failed to read audio format in header");
         return false;
     }
-    unsigned int decimalAudioFormat = hexaToDecimal(audioFormat, 2);
-    printf("INFO: audio format is : %u (1 for PCM)\n", decimalAudioFormat);
-
+    DEBUG("audio format is : %u (1 for PCM)\n", hexaToDecimal(audioFormat, 2));
     
     Byte numChannels[2];
     if (fread(numChannels, sizeof(Byte), 2, file) != 2) {
-        printf("ERROR: Failed to read number of channels in header\n");
+        FATAL("Failed to read number of channels in header");
         return false;
     }
-    unsigned int decimalNumChannels = hexaToDecimal(numChannels, 2);
-    printf("INFO: number of channels : %u, mono or stereo\n", decimalNumChannels);
+    DEBUG("number of channels : %u, mono or stereo\n", hexaToDecimal(numChannels, 2));
 
     Byte sampleRate[4];
     if (fread(sampleRate, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: Failed to read sample rate in header\n");
+        FATAL("Failed to read sample rate in header");
         return false;
     }
-    unsigned int decimalSampleRate = hexaToDecimal(sampleRate, 4);
-    printf("INFO: sample rate : %uz, %ukz \n", decimalSampleRate, decimalSampleRate / 1000);
+    DEBUG("sample rate : %uz, %ukz \n", hexaToDecimal(sampleRate, 4), hexaToDecimal(sampleRate, 4) / 1000);
 
     fseek(file, 6, SEEK_CUR); // skipping byte rate + block align
     Byte bitsPerSample[2];
     if (fread(bitsPerSample, sizeof(Byte), 2, file) != 2) {
-        printf("ERROR: Failed to read the bits per sample in header of FMT\n");
+        FATAL("Failed to read the bits per sample in header of FMT");
         return false;
     }
     if (decimalChunkSize > 16) {  // weird but whatever
@@ -224,7 +217,7 @@ bool readFMTChunk(FILE *file) {
 bool skipChunk(FILE *file) {
     Byte sizeToSkip[4];
     if (fread(sizeToSkip, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: failed to read the size of the chunk to skip based on that\n");
+        FATAL("failed to read the size of the chunk to skip based on that");
         return false;
     }
     unsigned int skippingSize = hexaToDecimal(sizeToSkip, 4);
@@ -235,7 +228,7 @@ bool skipChunk(FILE *file) {
 bool readLISTChunk(FILE *file) {
     Byte chunkSize[4];
     if (fread(chunkSize, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: failed to read the chunk size in LIST\n");
+        FATAL("failed to read the chunk size in LIST");
         return false;
     }
     unsigned int decimalChunkSize = hexaToDecimal(chunkSize, 4);
@@ -243,26 +236,26 @@ bool readLISTChunk(FILE *file) {
     fseek(file, 4, SEEK_CUR); // skipping "INFO" - List type (metadata)
     Byte softwareId[5] = {0};
     if (fread(softwareId, sizeof(Byte), 4, file) != 4) {
-        printf("ERROR: Failed to read software identifier in header\n");
+        FATAL("Failed to read software identifier in header");
         return false;
     }
-    printf("INFO: software identifier : (created by software id): %.4s \n", softwareId);
+    DEBUG("software identifier : (created by software id): %.4s \n", softwareId);
 
     if (strcmp("ISFT", (const char *)softwareId) == 0) {
-        printf("INFO: created by software\n");
+        DEBUG("created by software");
         Byte softwareNameLen[4];
         if (fread(softwareNameLen, sizeof(Byte), 4, file) != 4) {
-            printf("ERROR: Failed to read software name length in header\n");
+            FATAL("failed to read software name length in header");
             return false;
         }
         unsigned int decimalSoftwareNameLen = hexaToDecimal(softwareNameLen, 4);
 
         Byte softwareName[decimalSoftwareNameLen];
         if (fread(softwareName, sizeof(Byte), decimalSoftwareNameLen, file) != decimalSoftwareNameLen) {
-            printf("ERROR: Failed to read software name in header\n");
+            FATAL("Failed to read software name in header");
             return false;
         }
-        printf("INFO: software name or library used to create the audio: %s\n", softwareName);
+        DEBUG("software name or library used to create the audio: %s\n", softwareName);
         return true;        // end of the LIST chunk
     }// else we just jump to end this chunk as well
     fseek(file, decimalChunkSize - 8, SEEK_CUR);      // where 8 come from? after skipping of INFO
@@ -279,9 +272,9 @@ bool readLISTChunk(FILE *file) {
 bool signatureIsNotValid(Byte *headerSignature) {
     unsigned int signature = hexaToDecimal(headerSignature, 4);
     if (signature == WAV_HEADER_SIGNATURE) {
-        printf("INFO: the wav header signature is verified\n");
+        DEBUG("the wav header signature is verified");
         return false;
     }
-    printf("ERROR: the wav header signature is not verified\n");
+    FATAL("the wav header signature is not verified");
     return true;
 }

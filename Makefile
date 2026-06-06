@@ -1,5 +1,5 @@
 cc=gcc
-CFLAGS= -O -Wall -Wextra -Iinclude
+CFLAGS= -DDEBUG -O -Wall -Wextra -Iinclude
 TARGET=bin/steganov
 SRC=$(wildcard src/*.c)
 OBJS=$(SRC:src/%.c=build/%.o)
