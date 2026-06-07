@@ -10,18 +10,17 @@ bool skipChunk(FILE *file);
 bool readLISTChunk(FILE *file);
 bool readChunksUntilData(FILE **file);
 
+unsigned short bitsPerSample;
+
 bool encodeWAV(FILE *file, char *secretMessage) {
-    // read standard header information, signature, size, format type
     if (!readStandardHeaderInfo(file)) {
         return false;
     }
-    // read all of the chunks after the standard header until the data chunk
     if (!readChunksUntilData(&file)) {
         return false;
     }
 
-    // read data chunk id in readChunksUntilData functoin
-    // now read the data chunk size, then the actual data chunk starts
+    // read the data chunk size, then the actual data chunk starts
     Byte dataChunkSize[4];
     if (fread(dataChunkSize, sizeof(Byte), 4, file) != 4) {
         FATAL("can not read the data chunk's size");
@@ -29,13 +28,12 @@ bool encodeWAV(FILE *file, char *secretMessage) {
     }
     unsigned int decimalDataChunk = hexaToDecimal(dataChunkSize, 4);
     DEBUG("data chunk size: %d\n", decimalDataChunk);
+    unsigned short bytesPerSample = bitsPerSample == 0 ? WAV_DEFAULT_BITS_PER_SAMPLE : bitsPerSample;
     if (ableToEncode(decimalDataChunk - WAV_STEG_HEADER_SIZE, strlen(secretMessage) * 8)) {
-        // embed the header of the steganography, which is the size of unsigned int, containing message size
+        // embed the header of the steganography, which is the size of WAV_STEG_HEADER_SIZE, containing message size
         unsigned char secretMessageSize = strlen(secretMessage);
         for (unsigned int i = 0; i < WAV_STEG_HEADER_SIZE; i++) {
-            Byte sample[2];                                             //TODO here we ASSUME(which is bad idea to assume anything
-                                                                        //in this project) that each sample is 16bit (bits per sample)
-                                                                        //so i should fix it
+            Byte sample[bytesPerSample];
             if (fread(sample, sizeof(Byte), 2, file) != 2) {
                 FATAL("failed to read a sample");
                 return false;
@@ -83,20 +81,19 @@ char *decodeWAV(FILE *file) {
     }
 
     unsigned int messageSize = 0;
-    Byte mask = 0b00000001;
+    unsigned short bytesPerSample = bitsPerSample == 0 ? WAV_DEFAULT_BITS_PER_SAMPLE : bitsPerSample;
     for (unsigned int i = 0; i < WAV_STEG_HEADER_SIZE; i++) {
-        Byte sample[2];
+        Byte sample[bytesPerSample];
         if (fread(sample, sizeof(Byte), 2, file) != 2) {
             FATAL("failed to read a sample from file");
             return NULL;
         }
-        messageSize |= ((sample[0] & 0b00000001) << (7 - i));           // TODO apparently i store in big endian
-        mask >>= 1;
+        messageSize |= ((sample[0] & 0b00000001) << (7 - i));
     }
     DEBUG("size of the message is : %u", messageSize);
 
     Byte *message = malloc(sizeof(Byte) * messageSize + 1);
-    memset(message, 0, messageSize + 1); // prevent from reading out of scope of a string (in other words, add null terminator)
+    memset(message, 0, messageSize + 1); // add null terminator
     for (unsigned int i = 0; i < messageSize; i++) {
         Byte c = 0;
         for (int b = 0; b < 8; b++) {
@@ -201,12 +198,13 @@ bool readFMTChunk(FILE *file) {
     DEBUG("sample rate : %uz, %ukz \n", hexaToDecimal(sampleRate, 4), hexaToDecimal(sampleRate, 4) / 1000);
 
     fseek(file, 6, SEEK_CUR); // skipping byte rate + block align
-    Byte bitsPerSample[2];
-    if (fread(bitsPerSample, sizeof(Byte), 2, file) != 2) {
+    Byte bitsPerSampleBytes[2];
+    if (fread(bitsPerSampleBytes, sizeof(Byte), 2, file) != 2) {
         FATAL("Failed to read the bits per sample in header of FMT");
         return false;
     }
-    unsigned int decimalBitsPerSample = hexaToDecimal(bitsPerSample, 2);
+    unsigned int decimalBitsPerSample = hexaToDecimal(bitsPerSampleBytes, 2);
+    bitsPerSample = decimalBitsPerSample;
     DEBUG("bits per sample is : %d", decimalBitsPerSample);
     if (decimalChunkSize > 16) {  // weird but whatever
         fseek(file, decimalChunkSize - 16, SEEK_CUR);
@@ -257,7 +255,7 @@ bool readLISTChunk(FILE *file) {
         }
         DEBUG("software name or library used to create the audio: %s\n", softwareName);
         return true;        // end of the LIST chunk
-    }// else we just jump to end this chunk as well
+    }// else we just jump to end this chunk
     fseek(file, decimalChunkSize - 8, SEEK_CUR);      // where 8 come from? after skipping of INFO
                                                                            // and read the ISFT (software identifier) I
                                                                            // check it with "ISFT" then i read length of
