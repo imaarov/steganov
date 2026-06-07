@@ -24,7 +24,8 @@ typedef enum {
 typedef enum {
     BMP = 0,
     WAV = 1,
-    UNDEFINED = 2
+    PNG = 2,
+    UNDEFINED = 3
 } SupportedExtension;
 
 

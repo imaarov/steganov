@@ -1,6 +1,7 @@
 #include "../include/encode.h"
 #include "../include/bmp.h"
 #include "../include/wav.h"
+#include "../include/png.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +39,8 @@ bool encode(char *fileName, char *secretMessage) {
         case WAV:
              status = encodeWAV(file, secretMessage);
              break;
+        case PNG:
+             status = encodePNG(file, secretMessage);
         case UNDEFINED: // for the sake of my stupid lsp, ik i should not do that
             return false;
 

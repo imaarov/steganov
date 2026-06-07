@@ -30,6 +30,9 @@ SupportedExtension getSupportedExtEnum(const char *fileExt) {
     if (!strcmp(fileExt, ".wav")) {
         return WAV;
     }
+    if (!strcmp(fileExt, ".png")) {
+        return PNG;
+    }
     return UNDEFINED;
 }
 
