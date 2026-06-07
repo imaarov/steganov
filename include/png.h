@@ -4,9 +4,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define PNG_HEADER_SIZE      8
-#define PNG_HEADER_SIGNATURE 0x89504E470D0A1A0A // TODO change it to little endian
-#define PNG_CHUNK_ID_IHDR    "IHDR"
+#define PNG_HEADER_SIZE             8
+#define PNG_HEADER_SIGNATURE_A      0x474E5089
+#define PNG_HEADER_SIGNATURE_B      0x0A1A0A0D
+#define PNG_IHDR_LENGTH_FIELD_BYTES 4
+#define PNG_IHDR_CHUNK_ID_SIZE      4
+#define PNG_IHDR_CHUNK_ID           "IHDR"
 
 bool encodePNG(FILE *file, char *secretMessage);
 

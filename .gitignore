@@ -4,5 +4,6 @@ bin/*
 *.bmp
 *.wav
 *.swp
+*.png
 src/*.swp
 include/*.swp
