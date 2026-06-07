@@ -33,7 +33,10 @@ typedef unsigned char Byte;
 char *getFileExtension(char *fileName);
 char* getFileName();
 char* getSecret();
+// little-endian
 unsigned int hexaToDecimal(Byte *hexa, unsigned short size);
+// big-endian
+unsigned int hexaToDecimalBigEndian(Byte *hexa, unsigned short size);
 bool ableToEncode(unsigned int fileSize, unsigned int messaegSize);
 SupportedExtension getSupportedExtEnum(const char *fileExt);
 

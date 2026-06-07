@@ -19,6 +19,14 @@ unsigned int hexaToDecimal(Byte *hexa, unsigned short size) {
     return result;
 }
 
+unsigned int hexaToDecimalBigEndian(Byte *hexa, unsigned short size) {
+    unsigned int result = 0;
+    for (int i = size - 1,b = 0; i >= 0; i--,b++) {
+        result |= (hexa[b] << (i * 8));
+    }
+    return result;
+}
+
 bool ableToEncode(unsigned int fileDataSize, unsigned int secretMessageSize) {
     return fileDataSize >= secretMessageSize;
 }
