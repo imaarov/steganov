@@ -4,12 +4,11 @@
 #include <sys/types.h>
 
 static u_int32_t table[256];
-static bool tableInit     = false;
-
+static bool tableInit = false;
 static void init_crc32_table();
 
 u_int32_t crc32_calculate(const Byte *data, size_t size) {
-    u_int32_t crc        = CRC32_INIT; // init crc
+    u_int32_t crc        = CRC32_INIT;
     init_crc32_table();
     for (size_t i = 0; i < size; i++) {
         Byte index = data[i] ^ (Byte)crc;
