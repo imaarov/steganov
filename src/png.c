@@ -1,7 +1,9 @@
 #include "../include/png.h"
 #include "../include/utils.h"
+#include "../include/crc32.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 bool verifyPNGHeaderSignature(Byte *, Byte *);
@@ -91,5 +93,16 @@ bool readIHDRChunk(FILE *file) {
     Byte interlaceMethod= 0;
     interlaceMethod = fgetc(file);
     DEBUG("filter type is %d", interlaceMethod);
+
+    //TODO make it dynamic and better
+    fseek(file, -17, SEEK_CUR);
+    Byte *data = malloc(sizeof(Byte) * (lengthField + 4));
+    if (fread(data, sizeof(Byte), lengthField + 4, file) != (lengthField + 4)) {
+        FATAL("failed to read past data");
+        return false;
+    }
+    u_int32 crc = 0;
+    crc = crc32_calculate(data, lengthField + 4);
+    DEBUG("the CRC of the IHDR is : 0x%04x\n", crc);
     return false;
 }
