@@ -1,36 +1,37 @@
 #include "../include/crc32.h"
 #include <stdbool.h>
+#include <stddef.h>
+#include <sys/types.h>
 
-static u_int32 table[256];
-u_int32 polynomial = 0xEDB88320;
+static u_int32_t table[256];
+static bool tableInit     = false;
 
-bool refIn         = true;
-bool refOut        = true;
-bool xorOut        = true;
+static void init_crc32_table();
 
-static void init_crc_table();
-
-u_int32 crc32_calculate(Byte *data, u_int32 size) {
-    u_int32 crc        = 0xFFFFFFFF; // init crc
-    init_crc_table();
-    for (int i = 0; i < size; i++) {
-        Byte index = (data[i] ^ crc) & 0xFF;
+u_int32_t crc32_calculate(const Byte *data, size_t size) {
+    u_int32_t crc        = CRC32_INIT; // init crc
+    init_crc32_table();
+    for (size_t i = 0; i < size; i++) {
+        Byte index = data[i] ^ (Byte)crc;
         crc = (crc >> 8) ^ table[index];
     }
 
-    return crc ^ 0xFFFFFFFF;
+    return crc ^ CRC32_XOROUT;
 }
 
-static void init_crc_table() {
-    for (u_int32 i = 0; i < 256; i++) {
-        u_int32 current_byte = i;
-        for (u_int32 b = 0; b < 8; b++) {
-            if (0 != (current_byte & 0x00000001)) {
-                current_byte  = (current_byte >> 1) ^ polynomial;
+static void init_crc32_table() {
+    if (tableInit)
+        return;
+    for (u_int32_t i = 0; i < 256; i++) {
+        u_int32_t current_byte = i;
+        for (size_t b = 0; b < 8; b++) {
+            if (0 != (current_byte & 1)) {
+                current_byte  = (current_byte >> 1) ^ POLYNOMIAL;
             }else {
                 current_byte >>= 1;
             }
         }
         table[i] = current_byte;
     }
+    tableInit = true;
 }
