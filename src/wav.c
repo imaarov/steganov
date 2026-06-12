@@ -1,4 +1,5 @@
 #include "../include/wav.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,10 +10,11 @@ bool readFMTChunk(FILE *file);
 bool skipChunk(FILE *file);
 bool readLISTChunk(FILE *file);
 bool readChunksUntilData(FILE **file);
+bool encodeWAVSteganoSecretSize(uint32_t secretMessageSize,uint32_t dataChunkSize, uint8_t bytesPerSample, FILE *file);
 
-unsigned short bitsPerSample;
+uint16_t bitsPerSample = 0;
 
-bool encodeWAV(FILE *file, char *secretMessage) {
+bool encodeWAV(FILE *file,const char *secretMessage) {
     if (!readStandardHeaderInfo(file)) {
         return false;
     }
@@ -21,43 +23,42 @@ bool encodeWAV(FILE *file, char *secretMessage) {
     }
 
     // read the data chunk size, then the actual data chunk starts
-    Byte dataChunkSize[4];
-    if (fread(dataChunkSize, sizeof(Byte), 4, file) != 4) {
+    Byte dataChunkSize[WAV_CHUNK_SIZE_FIELD_SIZE];
+    if (fread(dataChunkSize, sizeof(Byte), WAV_CHUNK_SIZE_FIELD_SIZE, file) != WAV_CHUNK_SIZE_FIELD_SIZE) {
         FATAL("can not read the data chunk's size");
         return false;
     }
-    unsigned int decimalDataChunk = hexaToDecimal(dataChunkSize, 4);
+    uint32_t decimalDataChunk = hexaToDecimal(dataChunkSize, WAV_CHUNK_SIZE_FIELD_SIZE);
     DEBUG("data chunk size: %d\n", decimalDataChunk);
-    unsigned short bytesPerSample = bitsPerSample == 0 ? WAV_DEFAULT_BITS_PER_SAMPLE : bitsPerSample;
-    if (ableToEncode(decimalDataChunk - WAV_STEG_HEADER_SIZE, strlen(secretMessage) * 8)) {
-        // embed the header of the steganography, which is the size of WAV_STEG_HEADER_SIZE, containing message size
-        unsigned char secretMessageSize = strlen(secretMessage);
-        for (unsigned int i = 0; i < WAV_STEG_HEADER_SIZE; i++) {
-            Byte sample[bytesPerSample];
-            if (fread(sample, sizeof(Byte), 2, file) != 2) {
-                FATAL("failed to read a sample");
-                return false;
-            }
-            sample[0] = (sample[0] & 0b11111110) | (0b00000001 & (secretMessageSize >> (WAV_STEG_HEADER_SIZE - 1 - i)));
-            fseek(file, -2, SEEK_CUR);
-            fputc(sample[0], file);
-            fseek(file, 1, SEEK_CUR);
-        }
+    uint16_t bytesPerSample = bitsPerSample / 8;
+    if (bytesPerSample == 0 || bytesPerSample != 2) {
+        FATAL("the %u bytes per sample is not currently supported\n", bytesPerSample);
+        return false;
+    }
+    DEBUG("byte per sample: %u\n", bytesPerSample);
+    size_t messageBytesNeeded = strlen(secretMessage) * 8;
 
-        for (int i = 0; i < secretMessageSize; i++) {
-            for (int b = 0; b < 8; b++) {
-                Byte sample[2];
-                if (fread(sample, sizeof(Byte), 2, file) != 2) {
+    uint32_t secretMessageSize = strlen(secretMessage);
+    if (!encodeWAVSteganoSecretSize(secretMessageSize, decimalDataChunk, bytesPerSample, file)) {
+        FATAL("can not encode steganography header that include secret message in to the file");
+        return false;
+    }
+    if (ableToEncode(decimalDataChunk- WAV_STEG_HEADER_SIZE, messageBytesNeeded)) {
+        for (size_t i = 0; i < secretMessageSize; i++) {
+            for (uint8_t b = 0; b < 8; b++) {
+                Byte sample[bytesPerSample];
+                if (fread(sample, sizeof(Byte), bytesPerSample, file) != bytesPerSample) {
                     FATAL("failed to read the a sample of audio");
                     return false;
                 }
-                sample[0] = (sample[0] & 0b11111110) | ((secretMessage[i] >> (7 - b)) & 0b00000001);
-                fseek(file, -2, SEEK_CUR);
+                // Default 2 bytes per sample
+                sample[0] = (sample[0] & 0b11111110) | ((secretMessage[i] >> (7 - b)) & 1);
+                fseek(file, -bytesPerSample, SEEK_CUR);
                 fputc(sample[0], file);
-                fseek(file, 1, SEEK_CUR);
+                fseek(file, bytesPerSample - 1, SEEK_CUR);
             }
         }
-
+    
     }else {
         FATAL("cannot encode message in this file, message file exceeds file capacity");
         return false;
@@ -74,35 +75,39 @@ char *decodeWAV(FILE *file) {
         FATAL("failed to find data chunk while reading the file");
         return NULL;
     }
-    Byte dataChunkSize[4];
-    if (fread(dataChunkSize, sizeof(Byte), 4, file) != 4) {
+    Byte dataChunkSize[WAV_CHUNK_SIZE_FIELD_SIZE];
+    if (fread(dataChunkSize, sizeof(Byte), WAV_CHUNK_SIZE_FIELD_SIZE, file) != WAV_CHUNK_SIZE_FIELD_SIZE) {
         FATAL("can not read the data chunk's size");
         return NULL;
     }
 
-    unsigned int messageSize = 0;
-    unsigned short bytesPerSample = bitsPerSample == 0 ? WAV_DEFAULT_BITS_PER_SAMPLE : bitsPerSample;
-    for (unsigned int i = 0; i < WAV_STEG_HEADER_SIZE; i++) {
+    uint32_t messageSize = 0;
+    uint16_t bytesPerSample = bitsPerSample / 8;
+    if (bytesPerSample == 0 || bytesPerSample != 2) {
+        FATAL("the %u bytes per sample is not currently supported\n", bytesPerSample);
+        return NULL;
+    }
+    for (uint32_t i = 0; i < WAV_STEG_HEADER_SIZE; i++) {
         Byte sample[bytesPerSample];
-        if (fread(sample, sizeof(Byte), 2, file) != 2) {
+        if (fread(sample, sizeof(Byte), bytesPerSample, file) != bytesPerSample) {
             FATAL("failed to read a sample from file");
             return NULL;
         }
-        messageSize |= ((sample[0] & 0b00000001) << (7 - i));
+        messageSize |= ((sample[0] & 1) << (WAV_STEG_HEADER_SIZE - 1 - i));
     }
     DEBUG("size of the message is : %u", messageSize);
 
     Byte *message = malloc(sizeof(Byte) * messageSize + 1);
     memset(message, 0, messageSize + 1); // add null terminator
-    for (unsigned int i = 0; i < messageSize; i++) {
+    for (uint32_t i = 0; i < messageSize; i++) {
         Byte c = 0;
-        for (int b = 0; b < 8; b++) {
-            Byte sample[2];
-            if (fread(sample, sizeof(Byte), 2, file) != 2) {
+        for (uint8_t b = 0; b < 8; b++) {
+            Byte sample[bytesPerSample];
+            if (fread(sample, sizeof(Byte), bytesPerSample, file) != bytesPerSample) {
                 FATAL("failed to read a sample");
                 return NULL;
             }
-            c |= ((sample[0] & 0b00000001) << (7 - b));
+            c |= ((sample[0] & 1) << (7 - b));
         }
         message[i] = c;
         c = 0;
@@ -112,8 +117,8 @@ char *decodeWAV(FILE *file) {
 }
 
 bool readStandardHeaderInfo(FILE *file) {
-    Byte headerSignature[4];
-    if (fread(headerSignature, sizeof(Byte), 4, file) != 4) {
+    Byte headerSignature[WAV_HEADER_SIZE];
+    if (fread(headerSignature, sizeof(Byte), WAV_HEADER_SIZE, file) != WAV_HEADER_SIZE) {
         FATAL("Failed to read header signature");
         return false;
     }
@@ -122,16 +127,16 @@ bool readStandardHeaderInfo(FILE *file) {
         return false;
     }
 
-    Byte fileSize[4];
-    if (fread(fileSize, sizeof(Byte), 4, file) != 4) {
-        FATAL("Failed to read file size in header");
+    Byte fileSize[WAV_FILE_SIZE_FIELD_SIZE];
+    if (fread(fileSize, sizeof(Byte), WAV_FILE_SIZE_FIELD_SIZE, file) != WAV_FILE_SIZE_FIELD_SIZE) {
+        FATAL("Failed to read file size field in header");
         return false;
     }
-    unsigned int decimalFileSize = hexaToDecimal(fileSize, 4);
+    uint32_t decimalFileSize = hexaToDecimal(fileSize, WAV_FILE_SIZE_FIELD_SIZE);
     DEBUG("INFO: file size is : %d kb\n", decimalFileSize + 8);
 
-    Byte format[4];
-    if (fread(format, sizeof(Byte), 4, file) != 4) {
+    Byte format[WAV_FORMAT_FIELD_SIZE];
+    if (fread(format, sizeof(Byte), WAV_FORMAT_FIELD_SIZE, file) != WAV_FORMAT_FIELD_SIZE) {
         FATAL("Failed to read format in header");
         return false;
     }
@@ -141,8 +146,8 @@ bool readStandardHeaderInfo(FILE *file) {
 
 bool readChunksUntilData(FILE **file) {
     while (1) {
-        Byte chunkID[5] = {0};
-        if (fread(chunkID, sizeof(Byte), 4, *file) != 4) {
+        Byte chunkID[WAV_CHUNK_ID_FIELD_SIZE + 1] = {0};
+        if (fread(chunkID, sizeof(Byte), WAV_CHUNK_ID_FIELD_SIZE, *file) != WAV_CHUNK_ID_FIELD_SIZE) {
             FATAL("Failed to read chunk id in header");
             return false;
         }
@@ -170,70 +175,71 @@ bool readChunksUntilData(FILE **file) {
 }
 
 bool readFMTChunk(FILE *file) {
-    Byte chunkSize[4];
-    if (fread(chunkSize, sizeof(Byte), 4, file) != 4) {
+    Byte chunkSize[WAV_CHUNK_SIZE_FIELD_SIZE];
+    if (fread(chunkSize, sizeof(Byte), WAV_CHUNK_SIZE_FIELD_SIZE, file) != WAV_CHUNK_SIZE_FIELD_SIZE) {
         FATAL("failed to read the fmt chunk size in header");
         return false;
     }
-    unsigned int decimalChunkSize = hexaToDecimal(chunkSize, 4);
-    Byte audioFormat[2];
-    if (fread(audioFormat, sizeof(Byte), 2, file) != 2) {
+    uint32_t decimalChunkSize = hexaToDecimal(chunkSize, WAV_CHUNK_SIZE_FIELD_SIZE);
+    Byte audioFormat[WAV_FMT_AUDIO_FORMAT_SIZE];
+    if (fread(audioFormat, sizeof(Byte), WAV_FMT_AUDIO_FORMAT_SIZE, file) != WAV_FMT_AUDIO_FORMAT_SIZE) {
         FATAL("Failed to read audio format in header");
         return false;
     }
-    DEBUG("audio format is : %u (1 for PCM)\n", hexaToDecimal(audioFormat, 2));
+    DEBUG("audio format is : %u (1 for PCM)\n", hexaToDecimal(audioFormat, WAV_FMT_AUDIO_FORMAT_SIZE));
     
-    Byte numChannels[2];
-    if (fread(numChannels, sizeof(Byte), 2, file) != 2) {
+    Byte numChannels[WAV_FMT_NUM_CHANNELS_SIZE];
+    if (fread(numChannels, sizeof(Byte), WAV_FMT_NUM_CHANNELS_SIZE, file) != WAV_FMT_NUM_CHANNELS_SIZE) {
         FATAL("Failed to read number of channels in header");
         return false;
     }
-    DEBUG("number of channels : %u, mono or stereo\n", hexaToDecimal(numChannels, 2));
+    DEBUG("number of channels : %u, mono or stereo\n", hexaToDecimal(numChannels, WAV_FMT_NUM_CHANNELS_SIZE));
 
-    Byte sampleRate[4];
-    if (fread(sampleRate, sizeof(Byte), 4, file) != 4) {
+    Byte sampleRate[WAV_FMT_SAMPLE_RATE_SIZE];
+    if (fread(sampleRate, sizeof(Byte), WAV_FMT_SAMPLE_RATE_SIZE, file) != WAV_FMT_SAMPLE_RATE_SIZE) {
         FATAL("Failed to read sample rate in header");
         return false;
     }
-    DEBUG("sample rate : %uz, %ukz \n", hexaToDecimal(sampleRate, 4), hexaToDecimal(sampleRate, 4) / 1000);
+    DEBUG("sample rate : %uz, %ukz \n", hexaToDecimal(sampleRate, WAV_FMT_SAMPLE_RATE_SIZE), hexaToDecimal(sampleRate, WAV_FMT_SAMPLE_RATE_SIZE) / 1000);
 
-    fseek(file, 6, SEEK_CUR); // skipping byte rate + block align
-    Byte bitsPerSampleBytes[2];
-    if (fread(bitsPerSampleBytes, sizeof(Byte), 2, file) != 2) {
+    fseek(file, WAV_FMT_BYTE_RATE_SIZE + WAV_FMT_BLOCK_ALIGN_SIZE, SEEK_CUR);
+    Byte bitsPerSampleBytes[WAV_FMT_BITS_PER_SAMPLE_SIZE];
+    if (fread(bitsPerSampleBytes, sizeof(Byte), WAV_FMT_BITS_PER_SAMPLE_SIZE, file) != WAV_FMT_BITS_PER_SAMPLE_SIZE) {
         FATAL("Failed to read the bits per sample in header of FMT");
         return false;
     }
-    unsigned int decimalBitsPerSample = hexaToDecimal(bitsPerSampleBytes, 2);
+    uint32_t decimalBitsPerSample = hexaToDecimal(bitsPerSampleBytes, WAV_FMT_BITS_PER_SAMPLE_SIZE);
     bitsPerSample = decimalBitsPerSample;
     DEBUG("bits per sample is : %d", decimalBitsPerSample);
     if (decimalChunkSize > 16) {  // weird but whatever
+        DEBUG("FMT chunk size is not standard !!!");
         fseek(file, decimalChunkSize - 16, SEEK_CUR);
     }
     return true;
 }
 
 bool skipChunk(FILE *file) {
-    Byte sizeToSkip[4];
-    if (fread(sizeToSkip, sizeof(Byte), 4, file) != 4) {
+    Byte sizeToSkip[WAV_CHUNK_SIZE_FIELD_SIZE];
+    if (fread(sizeToSkip, sizeof(Byte), WAV_CHUNK_SIZE_FIELD_SIZE, file) != WAV_CHUNK_SIZE_FIELD_SIZE) {
         FATAL("failed to read the size of the chunk to skip based on that");
         return false;
     }
-    unsigned int skippingSize = hexaToDecimal(sizeToSkip, 4);
+    uint32_t skippingSize = hexaToDecimal(sizeToSkip, WAV_CHUNK_SIZE_FIELD_SIZE);
     fseek(file, skippingSize, SEEK_CUR);
     return true;
 }
 
 bool readLISTChunk(FILE *file) {
-    Byte chunkSize[4];
-    if (fread(chunkSize, sizeof(Byte), 4, file) != 4) {
+    Byte chunkSize[WAV_CHUNK_SIZE_FIELD_SIZE];
+    if (fread(chunkSize, sizeof(Byte), WAV_CHUNK_SIZE_FIELD_SIZE, file) != WAV_CHUNK_SIZE_FIELD_SIZE) {
         FATAL("failed to read the chunk size in LIST");
         return false;
     }
-    unsigned int decimalChunkSize = hexaToDecimal(chunkSize, 4);
+    uint32_t decimalChunkSize = hexaToDecimal(chunkSize, WAV_CHUNK_SIZE_FIELD_SIZE);
 
-    fseek(file, 4, SEEK_CUR); // skipping "INFO" - List type (metadata)
-    Byte softwareId[5] = {0};
-    if (fread(softwareId, sizeof(Byte), 4, file) != 4) {
+    fseek(file, WAV_LIST_TYPE_SIZE, SEEK_CUR);
+    Byte softwareId[WAV_LIST_SOFTWARE_ID_FIELD_SIZE + 1] = {0};
+    if (fread(softwareId, sizeof(Byte), WAV_LIST_SOFTWARE_ID_FIELD_SIZE, file) != WAV_LIST_SOFTWARE_ID_FIELD_SIZE) {
         FATAL("Failed to read software identifier in header");
         return false;
     }
@@ -241,12 +247,12 @@ bool readLISTChunk(FILE *file) {
 
     if (strcmp("ISFT", (const char *)softwareId) == 0) {
         DEBUG("created by software");
-        Byte softwareNameLen[4];
-        if (fread(softwareNameLen, sizeof(Byte), 4, file) != 4) {
+        Byte softwareNameLen[WAV_LIST_SOFTWARE_ID_SIZE];
+        if (fread(softwareNameLen, sizeof(Byte), WAV_LIST_SOFTWARE_ID_SIZE, file) != WAV_LIST_SOFTWARE_ID_SIZE) {
             FATAL("failed to read software name length in header");
             return false;
         }
-        unsigned int decimalSoftwareNameLen = hexaToDecimal(softwareNameLen, 4);
+        uint32_t decimalSoftwareNameLen = hexaToDecimal(softwareNameLen, WAV_LIST_SOFTWARE_ID_SIZE);
 
         Byte softwareName[decimalSoftwareNameLen];
         if (fread(softwareName, sizeof(Byte), decimalSoftwareNameLen, file) != decimalSoftwareNameLen) {
@@ -254,25 +260,38 @@ bool readLISTChunk(FILE *file) {
             return false;
         }
         DEBUG("software name or library used to create the audio: %s\n", softwareName);
-        return true;        // end of the LIST chunk
-    }// else we just jump to end this chunk
-    fseek(file, decimalChunkSize - 8, SEEK_CUR);      // where 8 come from? after skipping of INFO
-                                                                           // and read the ISFT (software identifier) I
-                                                                           // check it with "ISFT" then i read length of
-                                                                           // software name and read the software name after
-                                                                           // and reach the end of the chunk, but if the condition
-                                                                           // is not true, i should skipping the is equal to
-                                                                           // decimal - (8 = 4(INFO) + 4(ISFT))
+        return true;
+    }
+    fseek(file, decimalChunkSize - (WAV_LIST_TYPE_SIZE + WAV_LIST_SOFTWARE_ID_SIZE), SEEK_CUR);
     
     return true;
 }
 
 bool signatureIsNotValid(Byte *headerSignature) {
-    unsigned int signature = hexaToDecimal(headerSignature, 4);
+    uint32_t signature = hexaToDecimal(headerSignature, WAV_HEADER_SIZE);
     if (signature == WAV_HEADER_SIGNATURE) {
         DEBUG("the wav header signature is verified");
         return false;
     }
     FATAL("the wav header signature is not verified");
+    return true;
+}
+
+bool encodeWAVSteganoSecretSize(uint32_t secretMessageSize, uint32_t dataChunkSize, uint8_t bytesPerSample, FILE *file) {
+    if (!ableToEncode(dataChunkSize, WAV_STEG_HEADER_SIZE)) {
+        FATAL("not enough space in file to write steganography header");
+        return false;
+    }
+    for (uint32_t i = 0; i < WAV_STEG_HEADER_SIZE; i++) {
+        Byte sample[bytesPerSample];
+        if (fread(sample, sizeof(Byte), bytesPerSample, file) != bytesPerSample) {
+            FATAL("failed to read a sample");
+            return false;
+        }
+        sample[0] = (sample[0] & 0b11111110) | (1 & (secretMessageSize >> (WAV_STEG_HEADER_SIZE - 1 - i)));
+        fseek(file, -bytesPerSample, SEEK_CUR);
+        fputc(sample[0], file);
+        fseek(file, bytesPerSample - 1, SEEK_CUR);
+    }
     return true;
 }

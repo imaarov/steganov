@@ -7,23 +7,26 @@
 
 #define WAV_HEADER_SIZE                 4
 #define WAV_HEADER_SIGNATURE            0x46464952    // signature of WAV RIFF header (RIFF) in little endian
+#define WAV_FILE_SIZE_FIELD_SIZE        4
+#define WAV_FORMAT_FIELD_SIZE           4
+#define WAV_CHUNK_ID_FIELD_SIZE         4
+#define WAV_CHUNK_SIZE_FIELD_SIZE       4
+#define WAV_FMT_AUDIO_FORMAT_SIZE       2
+#define WAV_FMT_NUM_CHANNELS_SIZE       2
+#define WAV_FMT_SAMPLE_RATE_SIZE        4
+#define WAV_FMT_BYTE_RATE_SIZE          4
+#define WAV_FMT_BLOCK_ALIGN_SIZE        2
+#define WAV_FMT_BITS_PER_SAMPLE_SIZE    2
+#define WAV_LIST_TYPE_SIZE              4
+#define WAV_LIST_SOFTWARE_ID_FIELD_SIZE 4
+#define WAV_LIST_SOFTWARE_ID_SIZE       4
 #define WAV_DEFAULT_BITS_PER_SAMPLE     16
 #define WAV_STEG_HEADER_SIZE            8
 #define WAV_CHUNK_ID_FMT                "fmt "
 #define WAV_CHUNK_ID_LIST               "LIST"
 #define WAV_CHUNK_ID_DATA               "data"
 
-typedef struct WAVHeaderFile {
-    Byte headerSignature[4];    // file signature, RIFF
-    Byte fileSize[4];           // overall file size minus 8 bytes
-    Byte fileFormat[4];         // for example: WAVE (0x45 0x56 0x41 0x57)
-    Byte audioFormat[2];        // audio format like PCM (1 = PCM)
-    Byte numChannels[2];        // number of channels: 1 mono 2 stero
-    Byte sampleRate[4];         // typically 44100
-    Byte dataSize[4];
-} WAVHeaderFile;
-
-bool encodeWAV(FILE *file, char *secretMessage);
+bool encodeWAV(FILE *file,const char *secretMessage);
 char *decodeWAV(FILE *file);
 
 #endif
