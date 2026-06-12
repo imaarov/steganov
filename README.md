@@ -67,7 +67,8 @@ And all of that is also an assumption, in a WAV file , the header directly tells
 - [x] Read the file size and header, and verify them
 - [x] Implement the basic steganography method (LSB) and complete the encoding process
 - [x] Implement decoding from a file
-- [ ] Implement CRC(Cyclic Redundancy Codes) Algorithm
+- [x] Implement CRC(Cyclic Redundancy Codes) Algorithm
+- [ ] Implement IDAT handling, decompress and reverse the compression process that produces the final result in the PNG IDAT
 - [ ] Come up with another algorithm besides LSB
 - [ ] Implement encoding/decoding for PNG
 - [ ] Implement the Huffman algorithm for encoding/decoding, and provide the user with the option to select from the available algorithms
