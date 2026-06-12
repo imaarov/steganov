@@ -9,7 +9,7 @@ bool headerSignatureIsNotStandard(const Byte header[BMP_HEADER_SIZE]);
 Byte *getHeader(FILE *file);
 Byte *getSize(FILE *file);
 Byte *getFilePixelOffset(FILE *file);
-bool encodeSteganoSecretSize(uint32_t messageLength, uint32_t fileSize, uint32_t pixelOffset, FILE *file);
+bool encodeBMPSteganoSecretSize(uint32_t messageLength, uint32_t fileSize, uint32_t pixelOffset, FILE *file);
 
 bool encodeBMP(FILE *file, const char *secretMessage) {
     Byte *header = getHeader(file);
@@ -25,7 +25,7 @@ bool encodeBMP(FILE *file, const char *secretMessage) {
     
     uint32_t decimalPixelOffset = hexaToDecimal(pixelOffset, BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
     fseek(file, decimalPixelOffset, SEEK_SET);
-    if (!encodeSteganoSecretSize(messageLength, decimalFileSize, decimalPixelOffset, file)) {
+    if (!encodeBMPSteganoSecretSize(messageLength, decimalFileSize, decimalPixelOffset, file)) {
         FATAL("can not encode steganography header that include secret message size in to the file");
         free(pixelOffset);
         free(header);
@@ -112,11 +112,11 @@ Byte* getFilePixelOffset(FILE *file) {
     return pixelOffset;
 }
 
-bool encodeSteganoSecretSize(uint32_t messageLength, uint32_t fileSize, uint32_t pixelOffset, FILE *file) {
+bool encodeBMPSteganoSecretSize(uint32_t messageLength, uint32_t fileSize, uint32_t pixelOffset, FILE *file) {
     if (ableToEncode(fileSize - pixelOffset, messageLength * 8)) {
         for (uint32_t i = 0; i < BMP_STEG_HEADER_SIZE; i++) {
             Byte c = fgetc(file);
-            c = (c & 0b11111110) | ((messageLength >> (BMP_STEG_HEADER_SIZE- 1 - i)) & 0b00000001);
+            c = (c & 0b11111110) | ((messageLength >> (BMP_STEG_HEADER_SIZE- 1 - i)) & 1);
 
             fseek(file, -1, SEEK_CUR);
             fputc(c, file);
