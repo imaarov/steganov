@@ -5,18 +5,14 @@
 #include <stdbool.h>
 #include "../include/utils.h"
 
-#define BMP_HEADER_SIZE      2
-#define BMP_FILE_LEN_SIZE    2
-#define BMP_HEADER_SIGNATURE 0x424d    // signature of BMP header (BM)
-#define BMP_STEG_HEADER_SIZE 8
+#define BMP_HEADER_SIZE                           2
+#define BMP_HEADER_SIGNATURE                      0x424d    // signature of BMP header (BM)
+#define BMP_PIXEL_DATA_ADDRESS_OFFSET             10
+#define BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE         4
+#define BMP_STEG_HEADER_SIZE                      32
+#define BMP_FILE_SIZE_FIELD_SIZE                  4
 
-typedef struct BMPHeaderFile {
-    unsigned short startHeader;
-    Byte header[BMP_HEADER_SIZE];             // header file of bmp is 0x42 0x4d
-    Byte size[4];
-} BMPHeaderFile;
-
-bool encodeBMP(FILE *file,char *secretMessage);
+bool encodeBMP(FILE *file,const char *secretMessage);
 char *decodeBMP(FILE *file);
 
 #endif

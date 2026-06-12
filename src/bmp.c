@@ -1,67 +1,53 @@
 #include "../include/bmp.h"
 #include "../include/utils.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-bool headerSignatureIsNotStandard(Byte header[2]);
+bool headerSignatureIsNotStandard(const Byte header[BMP_HEADER_SIZE]);
 Byte *getHeader(FILE *file);
 Byte *getSize(FILE *file);
 Byte *getFilePixelOffset(FILE *file);
-unsigned int hexaToDecimal(Byte *hexa, unsigned short size);
+bool encodeSteganoSecretSize(uint32_t messageLength, uint32_t fileSize, uint32_t pixelOffset, FILE *file);
 
-bool encodeBMP(FILE *file, char *secretMessage) {
-    //BMPHeaderFile *bmpHeader = malloc(sizeof(BMPHeaderFile));
-    Byte *header = NULL;
-    Byte *size   = NULL;
-    header = getHeader(file);
+bool encodeBMP(FILE *file, const char *secretMessage) {
+    Byte *header = getHeader(file);
     if (headerSignatureIsNotStandard(header)) {
         FATAL("the file signature is not the same as standard BMP signature");
         free(header);
-        return 0;
+        return false;
     }
-    size = getSize(file);
-    unsigned int decimalFileSize = hexaToDecimal(size, 4);
-    unsigned int messageLength = strlen(secretMessage);
-    // after traversing the header and size, the file pointer should be at (4 + 2) = 6
-    // at bytes 10 to 13, we have the value that indicates where the offset to the pixel data resides
-    Byte *pixelOffset = NULL;
-    fseek(file, 4, SEEK_CUR);
-    pixelOffset = getFilePixelOffset(file);
+    Byte *size = getSize(file);
+    uint32_t decimalFileSize = hexaToDecimal(size, BMP_FILE_SIZE_FIELD_SIZE);
+    uint32_t messageLength = strlen(secretMessage);
+    Byte *pixelOffset = getFilePixelOffset(file);
     
-    unsigned int decimalPixelOffset = hexaToDecimal(pixelOffset, 4);
+    uint32_t decimalPixelOffset = hexaToDecimal(pixelOffset, BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
     fseek(file, decimalPixelOffset, SEEK_SET);
-    // encode the size of our message in a fixed position in the file
-    // the fixed position for locating the message size is 54 to 58 (typically the size of an unsigned int is 4 bytes)
-    unsigned int sizeOfByteMessage = sizeof(messageLength);
-    if (ableToEncode(decimalFileSize - decimalPixelOffset, sizeOfByteMessage * 8)) {
-        for (unsigned int i = 0; i < BMP_STEG_HEADER_SIZE; i++) {
-            Byte c = fgetc(file);
-            c = (c & 0b11111110) | ((messageLength >> (BMP_STEG_HEADER_SIZE- 1 - i)) & 0b00000001);
-
-            fseek(file, -1, SEEK_CUR);
-            fputc(c, file);
-        }
-    } else {
-        FATAL("failed to encode file size, message size exceeds file capacity");
+    if (!encodeSteganoSecretSize(messageLength, decimalFileSize, decimalPixelOffset, file)) {
+        FATAL("can not encode steganography header that include secret message size in to the file");
+        free(pixelOffset);
         free(header);
         free(size);
         return false;
     }
-
-    // for secret message sizes I multiplied it by 8, because it's LSB way for now, and
-    // each bit of a message needs the least significant bit of a BYTE to be altered
-    // so in general, for each byte of a secret character we need 8 bytes to store it
-    // because of the nature of LSB
-    // we don't want to corrupt a file by editing the header area and read-only area
-    // the decimalSize - decimalPixelOffset is for that, we don't count them
-    // because those are header bytes + reserved byte positions
-    if (ableToEncode(decimalFileSize - decimalPixelOffset - BMP_STEG_HEADER_SIZE, messageLength * 8)) {
-        for (unsigned int i = 0; i < messageLength; i++) {
+    // The available file size is the filesize - (offset to the which raw pixel data begins) -
+    // (own steganography header that include size of the secret message)
+    int32_t availableFileSize = (int32_t)decimalFileSize - (int32_t)decimalPixelOffset - (int32_t)BMP_STEG_HEADER_SIZE;
+    if (availableFileSize < 0) {
+        FATAL("file size corrupted");
+        free(pixelOffset);
+        free(header);
+        free(size);
+        return false;
+    }
+    if (ableToEncode(availableFileSize, messageLength * 8)) {
+        for (uint32_t i = 0; i < messageLength; i++) {
             for (int b = 0; b < 8; b++) {
                 Byte c = fgetc(file);
-                Byte bitMessage = (secretMessage[i] >> (7 - b)) & 0b00000001;
-                c = (c & 0x11111110) | bitMessage;
+                Byte messageLSB = (secretMessage[i] >> (7 - b)) & 1;
+                c = (c & 0b11111110) | messageLSB;
 
                 fseek(file, -1, SEEK_CUR);
                 fputc(c, file);
@@ -69,41 +55,45 @@ bool encodeBMP(FILE *file, char *secretMessage) {
         }
     }else {
         FATAL("its not possible to store message data in the file because of the file size");
-        DEBUG("file size: %u, message size: %lu\n", decimalFileSize, strlen(secretMessage));
+        DEBUG("available file size: %u, message size allocation: %u\n", availableFileSize, messageLength * 8);
+        free(pixelOffset);
         free(header);
         free(size);
-        return 0;
+        return false;
     }
 
-
-    // clean up
+    free(pixelOffset);
     free(header);
     free(size);
-    return 1;
+    return true;
 }
 
 char *decodeBMP(FILE *file) {
-    // goto position 10 to read the pixel offset
-    fseek(file, 10, SEEK_SET);
     Byte *pixelOffset = getFilePixelOffset(file);
-    unsigned int decimalPixelOffset = hexaToDecimal(pixelOffset, 4);
+    uint32_t decimalPixelOffset = hexaToDecimal(pixelOffset, BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
     DEBUG("file pixel offset is %u\n", decimalPixelOffset);
     fseek(file, decimalPixelOffset, SEEK_SET);
 
-    Byte byteSize = 0;
-    for (unsigned int i = 0; i < BMP_STEG_HEADER_SIZE; i++) {
-        Byte c = fgetc(file);
-        c = (c & 0b00000001) << (BMP_STEG_HEADER_SIZE - 1 - i);
+    uint32_t byteSize = 0;
+    for (uint16_t i = 0; i < BMP_STEG_HEADER_SIZE; i++) {
+        int ch = fgetc(file);
+        if (EOF == ch) {
+            FATAL("reached to the End Of File");
+            free(pixelOffset);
+            return NULL;
+        }
+        Byte c = (Byte)ch;
+        c = (c & 1) << (BMP_STEG_HEADER_SIZE - 1 - i);
         byteSize |= c;
     }
     DEBUG("the size of the message is : %u\n", byteSize);
     char *message = malloc(sizeof(char) * byteSize + 1);
     memset(message, 0, byteSize + 1);
-    for (int i = 0; i < byteSize; i++) {
+    for (uint32_t i = 0; i < byteSize; i++) {
         Byte final = 0;
         for (int b = 0; b < 8; b++) {
             Byte c = fgetc(file);
-            c = (c & 0b00000001) << (7 - b);
+            c = (c & 1) << (7 - b);
             final |= c;
         }
         message[i] = final;
@@ -114,14 +104,31 @@ char *decodeBMP(FILE *file) {
 }
 
 Byte* getFilePixelOffset(FILE *file) {
-    Byte *pixelOffset = malloc(sizeof(Byte) * 4);
-    for (int i = 0; i < 4; i++) {
+    fseek(file, BMP_PIXEL_DATA_ADDRESS_OFFSET, SEEK_SET);
+    Byte *pixelOffset = malloc(sizeof(Byte) * BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
+    for (int i = 0; i < BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE; i++) {
         pixelOffset[i] = fgetc(file);
     }
     return pixelOffset;
 }
+
+bool encodeSteganoSecretSize(uint32_t messageLength, uint32_t fileSize, uint32_t pixelOffset, FILE *file) {
+    if (ableToEncode(fileSize - pixelOffset, messageLength * 8)) {
+        for (uint32_t i = 0; i < BMP_STEG_HEADER_SIZE; i++) {
+            Byte c = fgetc(file);
+            c = (c & 0b11111110) | ((messageLength >> (BMP_STEG_HEADER_SIZE- 1 - i)) & 0b00000001);
+
+            fseek(file, -1, SEEK_CUR);
+            fputc(c, file);
+        }
+    } else {
+        FATAL("failed to encode file size, message size exceeds file capacity");
+        return false;
+    }
+    return true;
+}
 Byte* getHeader(FILE *file) {
-    Byte *header = malloc(sizeof(Byte) * 2);
+    Byte *header = malloc(sizeof(Byte) * BMP_HEADER_SIZE);
     for (int i = 0; i < BMP_HEADER_SIZE; i++) {
         Byte c = fgetc(file);
         header[i] = c;
@@ -130,22 +137,22 @@ Byte* getHeader(FILE *file) {
 }
 
 Byte *getSize(FILE *file) {
-    Byte *size = malloc(sizeof(Byte) * 4);
-    for (int i = 0; i < 4; i++) {
+    Byte *size = malloc(sizeof(Byte) * BMP_FILE_SIZE_FIELD_SIZE);
+    for (int i = 0; i < BMP_FILE_SIZE_FIELD_SIZE; i++) {
         Byte c = fgetc(file);
         size[i] = (Byte)c;
     }
     return size;
 }
 
-bool headerSignatureIsNotStandard(Byte header[2]) {
+bool headerSignatureIsNotStandard(const Byte header[BMP_HEADER_SIZE]) {
     DEBUG("check the file header signature\n");
     int signature = header[0] << 8 | header[1];
     if (signature != BMP_HEADER_SIGNATURE) {
         printf("%02x\n", signature);
-        return 1;
+        return true;
     }
     DEBUG("File Signature is OK\n");
-    return 0;
+    return false;
 }
 
