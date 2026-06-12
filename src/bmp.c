@@ -55,7 +55,7 @@ bool encodeBMP(FILE *file, const char *secretMessage) {
         }
     }else {
         FATAL("its not possible to store message data in the file because of the file size");
-        DEBUG("available file size: %u, message size allocation: %u\n", availableFileSize, messageLength * 8);
+        DEBUG("available file size: %u, message size allocation: %u", availableFileSize, messageLength * 8);
         free(pixelOffset);
         free(header);
         free(size);
@@ -71,7 +71,7 @@ bool encodeBMP(FILE *file, const char *secretMessage) {
 char *decodeBMP(FILE *file) {
     Byte *pixelOffset = getFilePixelOffset(file);
     uint32_t decimalPixelOffset = hexaToDecimal(pixelOffset, BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
-    DEBUG("file pixel offset is %u\n", decimalPixelOffset);
+    DEBUG("file pixel offset is %u", decimalPixelOffset);
     fseek(file, decimalPixelOffset, SEEK_SET);
 
     uint32_t byteSize = 0;
@@ -86,7 +86,7 @@ char *decodeBMP(FILE *file) {
         c = (c & 1) << (BMP_STEG_HEADER_SIZE - 1 - i);
         byteSize |= c;
     }
-    DEBUG("the size of the message is : %u\n", byteSize);
+    DEBUG("the size of the message is : %u", byteSize);
     char *message = malloc(sizeof(char) * byteSize + 1);
     memset(message, 0, byteSize + 1);
     for (uint32_t i = 0; i < byteSize; i++) {
@@ -146,13 +146,13 @@ Byte *getSize(FILE *file) {
 }
 
 bool headerSignatureIsNotStandard(const Byte header[BMP_HEADER_SIZE]) {
-    DEBUG("check the file header signature\n");
+    DEBUG("check the file header signature");
     int signature = header[0] << 8 | header[1];
     if (signature != BMP_HEADER_SIGNATURE) {
         printf("%02x\n", signature);
         return true;
     }
-    DEBUG("File Signature is OK\n");
+    DEBUG("File Signature is OK");
     return false;
 }
 

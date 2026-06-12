@@ -32,7 +32,7 @@ bool encodeWAV(FILE *file,const char *secretMessage) {
     DEBUG("data chunk size: %d\n", decimalDataChunk);
     uint16_t bytesPerSample = bitsPerSample / 8;
     if (bytesPerSample == 0 || bytesPerSample != 2) {
-        FATAL("the %u bytes per sample is not currently supported\n", bytesPerSample);
+        FATAL("the %u bytes per sample is not currently supported", bytesPerSample);
         return false;
     }
     DEBUG("byte per sample: %u\n", bytesPerSample);
@@ -84,7 +84,7 @@ char *decodeWAV(FILE *file) {
     uint32_t messageSize = 0;
     uint16_t bytesPerSample = bitsPerSample / 8;
     if (bytesPerSample == 0 || bytesPerSample != 2) {
-        FATAL("the %u bytes per sample is not currently supported\n", bytesPerSample);
+        FATAL("the %u bytes per sample is not currently supported", bytesPerSample);
         return NULL;
     }
     for (uint32_t i = 0; i < WAV_STEG_HEADER_SIZE; i++) {
@@ -133,14 +133,14 @@ bool readStandardHeaderInfo(FILE *file) {
         return false;
     }
     uint32_t decimalFileSize = hexaToDecimal(fileSize, WAV_FILE_SIZE_FIELD_SIZE);
-    DEBUG("INFO: file size is : %d kb\n", decimalFileSize + 8);
+    DEBUG("INFO: file size is : %d kb", decimalFileSize + 8);
 
     Byte format[WAV_FORMAT_FIELD_SIZE];
     if (fread(format, sizeof(Byte), WAV_FORMAT_FIELD_SIZE, file) != WAV_FORMAT_FIELD_SIZE) {
         FATAL("Failed to read format in header");
         return false;
     }
-    DEBUG("INFO: format type is : %.4s\n", format);
+    DEBUG("INFO: format type is : %.4s", format);
     return true;
 }
 
@@ -151,7 +151,8 @@ bool readChunksUntilData(FILE **file) {
             FATAL("Failed to read chunk id in header");
             return false;
         }
-        DEBUG("INFO: chunk id : %.4s\n", chunkID);
+        printf("\n");
+        DEBUG("INFO: chunk id : %.4s", chunkID);
 
         if (strcmp(WAV_CHUNK_ID_FMT, (const char *)chunkID) == 0) {
             if (!readFMTChunk(*file)) {
@@ -186,21 +187,21 @@ bool readFMTChunk(FILE *file) {
         FATAL("Failed to read audio format in header");
         return false;
     }
-    DEBUG("audio format is : %u (1 for PCM)\n", hexaToDecimal(audioFormat, WAV_FMT_AUDIO_FORMAT_SIZE));
+    DEBUG("audio format is : %u (1 for PCM)", hexaToDecimal(audioFormat, WAV_FMT_AUDIO_FORMAT_SIZE));
     
     Byte numChannels[WAV_FMT_NUM_CHANNELS_SIZE];
     if (fread(numChannels, sizeof(Byte), WAV_FMT_NUM_CHANNELS_SIZE, file) != WAV_FMT_NUM_CHANNELS_SIZE) {
         FATAL("Failed to read number of channels in header");
         return false;
     }
-    DEBUG("number of channels : %u, mono or stereo\n", hexaToDecimal(numChannels, WAV_FMT_NUM_CHANNELS_SIZE));
+    DEBUG("number of channels : %u, mono or stereo", hexaToDecimal(numChannels, WAV_FMT_NUM_CHANNELS_SIZE));
 
     Byte sampleRate[WAV_FMT_SAMPLE_RATE_SIZE];
     if (fread(sampleRate, sizeof(Byte), WAV_FMT_SAMPLE_RATE_SIZE, file) != WAV_FMT_SAMPLE_RATE_SIZE) {
         FATAL("Failed to read sample rate in header");
         return false;
     }
-    DEBUG("sample rate : %uz, %ukz \n", hexaToDecimal(sampleRate, WAV_FMT_SAMPLE_RATE_SIZE), hexaToDecimal(sampleRate, WAV_FMT_SAMPLE_RATE_SIZE) / 1000);
+    DEBUG("sample rate : %uz, %ukz", hexaToDecimal(sampleRate, WAV_FMT_SAMPLE_RATE_SIZE), hexaToDecimal(sampleRate, WAV_FMT_SAMPLE_RATE_SIZE) / 1000);
 
     fseek(file, WAV_FMT_BYTE_RATE_SIZE + WAV_FMT_BLOCK_ALIGN_SIZE, SEEK_CUR);
     Byte bitsPerSampleBytes[WAV_FMT_BITS_PER_SAMPLE_SIZE];
@@ -243,7 +244,7 @@ bool readLISTChunk(FILE *file) {
         FATAL("Failed to read software identifier in header");
         return false;
     }
-    DEBUG("software identifier : (created by software id): %.4s \n", softwareId);
+    DEBUG("software identifier : (created by software id): %.4s", softwareId);
 
     if (strcmp("ISFT", (const char *)softwareId) == 0) {
         DEBUG("created by software");
@@ -259,7 +260,7 @@ bool readLISTChunk(FILE *file) {
             FATAL("Failed to read software name in header");
             return false;
         }
-        DEBUG("software name or library used to create the audio: %s\n", softwareName);
+        DEBUG("software name or library used to create the audio: %s", softwareName);
         return true;
     }
     fseek(file, decimalChunkSize - (WAV_LIST_TYPE_SIZE + WAV_LIST_SOFTWARE_ID_SIZE), SEEK_CUR);

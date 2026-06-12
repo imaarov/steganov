@@ -3,6 +3,7 @@
 #include "../include/crc32.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -101,8 +102,8 @@ bool readIHDRChunk(FILE *file) {
         FATAL("failed to read past data");
         return false;
     }
-    u_int32 crc = 0;
+    uint32_t crc = 0;
     crc = crc32_calculate(data, lengthField + 4);
-    DEBUG("the CRC of the IHDR is : 0x%04x\n", crc);
+    DEBUG("the CRC of the IHDR is : 0x%04x", crc);
     return false;
 }
