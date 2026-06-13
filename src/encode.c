@@ -1,13 +1,13 @@
 #include "../include/encode.h"
 #include "../include/bmp.h"
-#include "../include/wav.h"
 #include "../include/png.h"
+#include "../include/wav.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 bool encode(char *fileName, char *secretMessage) {
-    fileName      = getFileName();
+    fileName = getFileName();
     secretMessage = getSecret();
     if (fileName == NULL || secretMessage == NULL) {
         free(fileName);
@@ -33,17 +33,16 @@ bool encode(char *fileName, char *secretMessage) {
     }
     bool status = false;
     switch (ext) {
-        case BMP:
-             status = encodeBMP(file, secretMessage);
-             break;
-        case WAV:
-             status = encodeWAV(file, secretMessage);
-             break;
-        case PNG:
-             status = encodePNG(file, secretMessage);
-        case UNDEFINED: // for the sake of my stupid lsp, ik i should not do that
-            return false;
-
+    case BMP:
+        status = encodeBMP(file, secretMessage);
+        break;
+    case WAV:
+        status = encodeWAV(file, secretMessage);
+        break;
+    case PNG:
+        status = encodePNG(file, secretMessage);
+    case UNDEFINED: // unnecessary
+        return false;
     }
     if (!status) {
         FATAL("Failed to encode\n");
@@ -54,4 +53,3 @@ bool encode(char *fileName, char *secretMessage) {
     fclose(file);
     return true;
 }
-

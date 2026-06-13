@@ -1,12 +1,12 @@
 #include "../include/decode.h"
 #include "../include/bmp.h"
-#include "../include/wav.h"
 #include "../include/utils.h"
+#include "../include/wav.h"
 #include <stdio.h>
 #include <string.h>
 
 char *decode(char *fileName) {
-    fileName      = getFileName();
+    fileName = getFileName();
     if (fileName == NULL) {
         FATAL("file name should not be empty");
         return NULL;
@@ -28,15 +28,15 @@ char *decode(char *fileName) {
     }
     char *message = NULL;
     switch (ext) {
-        case BMP:
-            message = decodeBMP(file);
-            break;
-        case WAV:
-            message = decodeWAV(file);
-            break;
-        case UNDEFINED:
-            fclose(file);
-            return NULL;
+    case BMP:
+        message = decodeBMP(file);
+        break;
+    case WAV:
+        message = decodeWAV(file);
+        break;
+    case UNDEFINED:
+        fclose(file);
+        return NULL;
     }
     if (message == NULL) {
         DEBUG("INFO: decoding operation failed\n");

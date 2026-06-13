@@ -13,5 +13,4 @@
 
 bool encodePNG(FILE *file, char *secretMessage);
 
-
 #endif

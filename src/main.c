@@ -1,9 +1,9 @@
-#define VERSION                "1.0.0"
-#include <stdlib.h>
-#include <stdio.h>
-#include "../include/utils.h"
-#include "../include/encode.h"
+#define VERSION "1.0.0"
 #include "../include/decode.h"
+#include "../include/encode.h"
+#include "../include/utils.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 void prompt(char **fileName, char **secretMessage);
 
@@ -31,24 +31,25 @@ void prompt(char **fileName, char **secretMessage) {
         }
         int userOption = (int)strtol(buffer, NULL, 10);
         switch (userOption) {
-            case ENCODE:
-                if (encode(*fileName, *secretMessage)) {
-                    printf("INFO: successful encoding\n");
-                }else {
-                    printf("INFO: failed to encoding\n");
-                }
+        case ENCODE:
+            if (encode(*fileName, *secretMessage)) {
+                printf("INFO: successful encoding\n");
+            } else {
+                printf("INFO: failed to encoding\n");
+            }
+            break;
+        case DECODE:
+            message = decode(*fileName);
+            if (message == NULL) {
+                printf("WARNING: could not find a message\n");
                 break;
-            case DECODE:
-                message = decode(*fileName);
-                if (message == NULL) {
-                    printf("WARNING: could not find a message\n");
-                    break;
-                }
-                printf("INFO: secret message extracted from file is: %s\n", message);
-                break;
-            case EXIT:
-            default:
-                return;
+            }
+            printf("INFO: secret message extracted from file is: %s\n",
+                   message);
+            break;
+        case EXIT:
+        default:
+            return;
         }
     }
 }

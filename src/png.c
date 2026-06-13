@@ -1,9 +1,9 @@
 #include "../include/png.h"
-#include "../include/utils.h"
 #include "../include/crc32.h"
+#include "../include/utils.h"
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,12 +11,14 @@ bool verifyPNGHeaderSignature(Byte *, Byte *);
 bool readIHDRChunk(FILE *file);
 
 bool encodePNG(FILE *file, char *secretMessage) {
-    Byte headerA[PNG_HEADER_SIZE/2];
-    if (fread(headerA, sizeof(Byte), PNG_HEADER_SIZE / 2, file) != PNG_HEADER_SIZE / 2) {
+    Byte headerA[PNG_HEADER_SIZE / 2];
+    if (fread(headerA, sizeof(Byte), PNG_HEADER_SIZE / 2, file) !=
+        PNG_HEADER_SIZE / 2) {
         FATAL("failed to read the PNG header section");
     }
-    Byte headerB[PNG_HEADER_SIZE/2];
-    if (fread(headerB, sizeof(Byte), PNG_HEADER_SIZE/2, file) != PNG_HEADER_SIZE/2) {
+    Byte headerB[PNG_HEADER_SIZE / 2];
+    if (fread(headerB, sizeof(Byte), PNG_HEADER_SIZE / 2, file) !=
+        PNG_HEADER_SIZE / 2) {
         FATAL("failed to read the PNG header section");
     }
     if (!verifyPNGHeaderSignature(headerA, headerB)) {
@@ -27,8 +29,8 @@ bool encodePNG(FILE *file, char *secretMessage) {
 }
 
 bool verifyPNGHeaderSignature(Byte *signatureA, Byte *signatureB) {
-    unsigned int signA = hexaToDecimal(signatureA, PNG_HEADER_SIZE/2);
-    unsigned int signB = hexaToDecimal(signatureB, PNG_HEADER_SIZE/2);
+    unsigned int signA = hexaToDecimal(signatureA, PNG_HEADER_SIZE / 2);
+    unsigned int signB = hexaToDecimal(signatureB, PNG_HEADER_SIZE / 2);
     DEBUG("sign A : %x", signA);
     DEBUG("sign B : %x", signB);
     if (PNG_HEADER_SIGNATURE_A == signA && PNG_HEADER_SIGNATURE_B == signB) {
@@ -41,19 +43,21 @@ bool verifyPNGHeaderSignature(Byte *signatureA, Byte *signatureB) {
 
 bool readIHDRChunk(FILE *file) {
     Byte size[PNG_IHDR_LENGTH_FIELD_BYTES];
-    if (fread(size, sizeof(Byte), 4, file)!=PNG_IHDR_LENGTH_FIELD_BYTES) {
+    if (fread(size, sizeof(Byte), 4, file) != PNG_IHDR_LENGTH_FIELD_BYTES) {
         FATAL("failed to read the IHDR length field");
         return false;
     }
-    unsigned int lengthField = hexaToDecimalBigEndian(size, PNG_IHDR_LENGTH_FIELD_BYTES);
+    unsigned int lengthField =
+        hexaToDecimalBigEndian(size, PNG_IHDR_LENGTH_FIELD_BYTES);
     DEBUG("length of the field of IHDR is %d", lengthField);
     Byte chunkIdentifier[PNG_IHDR_CHUNK_ID_SIZE + 1];
     memset(chunkIdentifier, 0, PNG_IHDR_CHUNK_ID_SIZE + 1);
-    if (fread(chunkIdentifier, sizeof(Byte), PNG_IHDR_CHUNK_ID_SIZE, file)!=PNG_IHDR_CHUNK_ID_SIZE) {
+    if (fread(chunkIdentifier, sizeof(Byte), PNG_IHDR_CHUNK_ID_SIZE, file) !=
+        PNG_IHDR_CHUNK_ID_SIZE) {
         FATAL("failed to read the IHDR identifier");
     }
     DEBUG("IHDR ID : %s", chunkIdentifier);
-    if (strcmp(PNG_IHDR_CHUNK_ID, (char *)chunkIdentifier) != 0){
+    if (strcmp(PNG_IHDR_CHUNK_ID, (char *)chunkIdentifier) != 0) {
         FATAL("IHDR identifier is not the same as standard IHDR ID");
         return false;
     }
@@ -80,7 +84,8 @@ bool readIHDRChunk(FILE *file) {
 
     Byte colorType = 0;
     colorType = fgetc(file);
-    DEBUG("color types: \n0 : grey scale\n2 : RGB\n3 : indexed color palette\n4 : grey scale with alpha\n6 : RGBAlpha");
+    DEBUG("color types: \n0 : grey scale\n2 : RGB\n3 : indexed color "
+          "palette\n4 : grey scale with alpha\n6 : RGBAlpha");
     DEBUG("color type :%d", colorType);
 
     Byte compressionType = 0;
@@ -91,11 +96,11 @@ bool readIHDRChunk(FILE *file) {
     filterType = fgetc(file);
     DEBUG("filter type is %d", filterType);
 
-    Byte interlaceMethod= 0;
+    Byte interlaceMethod = 0;
     interlaceMethod = fgetc(file);
     DEBUG("filter type is %d", interlaceMethod);
 
-    //TODO make it dynamic and better
+    // TODO make it dynamic and better
     fseek(file, -17, SEEK_CUR);
     Byte *data = malloc(sizeof(Byte) * (lengthField + 4));
     if (fread(data, sizeof(Byte), lengthField + 4, file) != (lengthField + 4)) {

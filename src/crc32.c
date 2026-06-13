@@ -8,7 +8,7 @@ static bool tableInit = false;
 static void init_crc32_table();
 
 u_int32_t crc32_calculate(const Byte *data, size_t size) {
-    u_int32_t crc        = CRC32_INIT;
+    u_int32_t crc = CRC32_INIT;
     init_crc32_table();
     for (size_t i = 0; i < size; i++) {
         Byte index = data[i] ^ (Byte)crc;
@@ -25,8 +25,8 @@ static void init_crc32_table() {
         u_int32_t current_byte = i;
         for (size_t b = 0; b < 8; b++) {
             if (0 != (current_byte & 1)) {
-                current_byte  = (current_byte >> 1) ^ POLYNOMIAL;
-            }else {
+                current_byte = (current_byte >> 1) ^ POLYNOMIAL;
+            } else {
                 current_byte >>= 1;
             }
         }
