@@ -2,7 +2,7 @@
 Hide your data inside other data
 
 steganov is a tool that hides your data (currently, data is only a string) inside other data (mainly files like images and audio), a technique called steganography.
-The basic form of doing steganography is manipulating the LSB (Least Significant Bit) and the The LSBs we manipulate should not be the header section or in reserved sections of the file. 
+The basic form of doing steganography is manipulating the LSB (Least Significant Bit) and the LSBs we manipulate should not be the header section or in reserved sections of the file. 
 
 Most of the time standard files have standard blueprint, which contains the boundaries of each section for example: header, file size, reserved, actual data (for example pixels data).
 
@@ -68,7 +68,11 @@ And all of that is also an assumption, in a WAV file , the header directly tells
 - [x] Implement the basic steganography method (LSB) and complete the encoding process
 - [x] Implement decoding from a file
 - [x] Implement CRC(Cyclic Redundancy Codes) Algorithm
-- [ ] Implement IDAT handling, decompress and reverse the compression process that produces the final result in the PNG IDAT
+- [ ] Implement Adler32 algorithm
+- [ ] Implement bitstream
+- [ ] Implement Huffman algorithm
+- [ ] Implement LZ77 algorithm
+- [ ] Implement DEFLATE decompression/compression
 - [ ] Come up with another algorithm besides LSB
 - [ ] Implement encoding/decoding for PNG
 - [ ] Implement the Huffman algorithm for encoding/decoding, and provide the user with the option to select from the available algorithms
