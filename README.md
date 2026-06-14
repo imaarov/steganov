@@ -68,7 +68,7 @@ And all of that is also an assumption, in a WAV file , the header directly tells
 - [x] Implement the basic steganography method (LSB) and complete the encoding process
 - [x] Implement decoding from a file
 - [x] Implement CRC(Cyclic Redundancy Codes) Algorithm
-- [ ] Implement Adler32 algorithm
+- [x] Implement Adler32 algorithm
 - [ ] Implement bitstream
 - [ ] Implement Huffman algorithm
 - [ ] Implement LZ77 algorithm
