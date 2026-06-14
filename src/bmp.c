@@ -13,10 +13,8 @@ bool encodeBMPSteganoSecretSize(uint32_t messageLength, uint32_t fileSize,
                                 uint32_t pixelOffset, FILE *file);
 
 bool encodeBMP(FILE *file, const char *secretMessage) {
-    Byte *header = getHeader(file);
-    if (headerSignatureIsNotStandard(header)) {
+    if (headerSignatureIsNotStandard(getHeader(file))) {
         FATAL("the file signature is not the same as standard BMP signature");
-        free(header);
         return false;
     }
     Byte *size = getSize(file);
@@ -32,7 +30,6 @@ bool encodeBMP(FILE *file, const char *secretMessage) {
         FATAL("can not encode steganography header that include secret message "
               "size in to the file");
         free(pixelOffset);
-        free(header);
         free(size);
         return false;
     }
@@ -45,7 +42,6 @@ bool encodeBMP(FILE *file, const char *secretMessage) {
     if (availableFileSize < 0) {
         FATAL("file size corrupted");
         free(pixelOffset);
-        free(header);
         free(size);
         return false;
     }
@@ -66,13 +62,11 @@ bool encodeBMP(FILE *file, const char *secretMessage) {
         DEBUG("available file size: %u, message size allocation: %u",
               availableFileSize, messageLength * 8);
         free(pixelOffset);
-        free(header);
         free(size);
         return false;
     }
 
     free(pixelOffset);
-    free(header);
     free(size);
     return true;
 }
