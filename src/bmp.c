@@ -142,18 +142,19 @@ bool encodeBMPSteganoSecretSize(uint32_t messageLength, uint32_t fileSize,
 }
 Byte *getHeader(FILE *file) {
     Byte *header = malloc(sizeof(Byte) * BMP_HEADER_SIZE);
-    for (int i = 0; i < BMP_HEADER_SIZE; i++) {
-        Byte c = fgetc(file);
-        header[i] = c;
+    if (fread(header, sizeof(Byte), BMP_HEADER_SIZE, file) != BMP_HEADER_SIZE) {
+        FATAL("failed to read the header from file");
+        return NULL;
     }
     return header;
 }
 
 Byte *getSize(FILE *file) {
     Byte *size = malloc(sizeof(Byte) * BMP_FILE_SIZE_FIELD_SIZE);
-    for (int i = 0; i < BMP_FILE_SIZE_FIELD_SIZE; i++) {
-        Byte c = fgetc(file);
-        size[i] = (Byte)c;
+    if (fread(size, sizeof(Byte), BMP_FILE_SIZE_FIELD_SIZE, file) !=
+        BMP_FILE_SIZE_FIELD_SIZE) {
+        FATAL("failed to read file size from file");
+        return NULL;
     }
     return size;
 }
