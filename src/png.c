@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 bool verifyPNGHeaderSignature(FILE *file);
@@ -53,80 +52,32 @@ bool verifyPNGHeaderSignature(FILE *file) {
 }
 
 bool readIHDRChunk(FILE *file) {
-    printf("\n");
-    DEBUG("IHDR chunk information");
-    Byte size[PNG_LENGTH_FIELD_SIZE];
-    if (fread(size, sizeof(Byte), PNG_LENGTH_FIELD_SIZE, file) !=
-        PNG_LENGTH_FIELD_SIZE) {
-        FATAL("failed to read the IHDR length field");
+    PNGIHDRHeader ihdrHeader;
+    if (fread(&ihdrHeader, sizeof(PNGIHDRHeader) - sizeof(ihdrHeader.gap_pad),
+              1, file) != 1) {
+        FATAL("failed to read the IHDR header");
         return false;
     }
-    unsigned int lengthField =
-        hexaToDecimalBigEndian(size, PNG_LENGTH_FIELD_SIZE);
-    DEBUG("length of the field of IHDR is %d", lengthField);
-
-    Byte chunkId[PNG_CHUNK_ID_SIZE + 1];
-    memset(chunkId, 0, PNG_CHUNK_ID_SIZE + 1);
-    if (fread(chunkId, sizeof(Byte), PNG_CHUNK_ID_SIZE, file) !=
-        PNG_CHUNK_ID_SIZE) {
-        FATAL("failed to read the IHDR identifier");
-    }
-    DEBUG("IHDR ID : %s", chunkId);
-    if (strcmp(PNG_IHDR_CHUNK_ID, (char *)chunkId) != 0) {
-        FATAL("IHDR identifier is not the same as standard IHDR ID");
-        return false;
-    }
-
-    Byte width[PNG_IHDR_WIDTH_FIELD_SIZE];
-    if (fread(width, sizeof(Byte), PNG_IHDR_WIDTH_FIELD_SIZE, file) !=
-        PNG_IHDR_WIDTH_FIELD_SIZE) {
-        FATAL("failed to read width section of IHDR");
-        return false;
-    }
-    unsigned int decimalWidth =
-        hexaToDecimalBigEndian(width, PNG_IHDR_WIDTH_FIELD_SIZE);
-    DEBUG("width of the png : %d", decimalWidth);
-
-    Byte height[PNG_IHDR_HEIGHT_FIELD_SIZE];
-    if (fread(height, sizeof(Byte), PNG_IHDR_HEIGHT_FIELD_SIZE, file) !=
-        PNG_IHDR_HEIGHT_FIELD_SIZE) {
-        FATAL("failed to read height section of IHDR");
-        return false;
-    }
-    unsigned int decimalHeight =
-        hexaToDecimalBigEndian(height, PNG_IHDR_HEIGHT_FIELD_SIZE);
-    DEBUG("height of the png : %d", decimalHeight);
-
-    Byte bitDepth = 0;
-    bitDepth = fgetc(file);
-    DEBUG("bit depth (bits per sample) is : %d", bitDepth);
-
-    Byte colorType = 0;
-    colorType = fgetc(file);
-    DEBUG("color types: \n0 : grey scale\n2 : RGB\n3 : indexed color "
-          "palette\n4 : grey scale with alpha\n6 : RGBAlpha");
-    DEBUG("color type :%d", colorType);
-
-    Byte compressionType = 0;
-    compressionType = fgetc(file);
-    DEBUG("compression type is %d", compressionType);
-
-    Byte filterType = 0;
-    filterType = fgetc(file);
-    DEBUG("filter type is %d", filterType);
-
-    Byte interlaceMethod = 0;
-    interlaceMethod = fgetc(file);
-    DEBUG("filter type is %d", interlaceMethod);
-
-    // TODO make it dynamic and better
-    fseek(file, -17, SEEK_CUR);
-    Byte *data = malloc(sizeof(Byte) * (lengthField + 4));
-    if (fread(data, sizeof(Byte), lengthField + 4, file) != (lengthField + 4)) {
-        FATAL("failed to read past data");
-        return false;
-    }
-    uint32_t crc = crc32_calculate(data, lengthField + 4);
+    uint32_t ihdrSize =
+        hexaToDecimalBigEndian(ihdrHeader.size, PNG_LENGTH_FIELD_SIZE);
+    uint32_t width =
+        hexaToDecimalBigEndian(ihdrHeader.width, PNG_IHDR_WIDTH_FIELD_SIZE);
+    uint32_t height =
+        hexaToDecimalBigEndian(ihdrHeader.height, PNG_IHDR_HEIGHT_FIELD_SIZE);
+    DEBUG("IHDR chunk size: %d", ihdrSize);
+    DEBUG("IHDR ID: %.4s", (char *)ihdrHeader.ID);
+    DEBUG("IHDR width: %d", width);
+    DEBUG("IHDR height: %d", height);
+    DEBUG("IHDR color type : %d", ihdrHeader.colorType);
+    DEBUG("IHDR compression type: %d", ihdrHeader.compressionType);
+    DEBUG("IHDR filter type: %d", ihdrHeader.filterType);
+    DEBUG("IHDR interlace method: %d", ihdrHeader.interlaceMethod);
+    // CRC include both chuck data section + chunk type section
+    uint32_t crcDataSize = ihdrSize + PNG_CHUNK_ID_SIZE;
+    Byte *data = (Byte *)&ihdrHeader;
+    data = data +
+           PNG_LENGTH_FIELD_SIZE; // crc exclude the size field, so i skip that
+    uint32_t crc = crc32_calculate(data, crcDataSize);
     DEBUG("the CRC of the IHDR (Calculated by built in CRC Checksum "
           "calculator)is : 0x%04x",
           crc);
@@ -145,7 +96,6 @@ bool readIHDRChunk(FILE *file) {
         return false;
     }
 
-    free(data);
     return true;
 }
 
