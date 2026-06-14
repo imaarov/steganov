@@ -41,6 +41,7 @@ bool encode(char *fileName, char *secretMessage) {
         break;
     case PNG:
         status = encodePNG(file, secretMessage);
+        break;
     case UNDEFINED: // unnecessary
         return false;
     }

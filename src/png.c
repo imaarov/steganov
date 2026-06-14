@@ -11,6 +11,7 @@ bool readIHDRChunk(FILE *file);
 uint32_t getFirstIDATChunkSize(FILE *file);
 
 bool encodePNG(FILE *file, char *secretMessage) {
+    (void)secretMessage; // TODO silence unused warning
     if (!verifyPNGHeaderSignature(file)) {
         return false;
     }
@@ -23,6 +24,11 @@ bool encodePNG(FILE *file, char *secretMessage) {
     }
 
     return false;
+}
+
+char *decodePNG(FILE *file) {
+    (void)file;
+    return NULL;
 }
 
 bool verifyPNGHeaderSignature(FILE *file) {

@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#ifdef DEBUG
+#ifdef ENABLE_DEBUG
 #define DEBUG(msg, ...)                                                        \
     printf("[DEBUG]: %s:%d:" msg "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 #define FATAL(msg, ...)                                                        \

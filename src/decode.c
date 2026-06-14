@@ -1,5 +1,6 @@
 #include "../include/decode.h"
 #include "../include/bmp.h"
+#include "../include/png.h"
 #include "../include/utils.h"
 #include "../include/wav.h"
 #include <stdio.h>
@@ -33,6 +34,9 @@ char *decode(char *fileName) {
         break;
     case WAV:
         message = decodeWAV(file);
+        break;
+    case PNG:
+        message = decodePNG(file);
         break;
     case UNDEFINED:
         fclose(file);

@@ -31,5 +31,6 @@ typedef struct {
 } PNGIHDRHeader;
 
 bool encodePNG(FILE *file, char *secretMessage);
+char *decodePNG(FILE *file);
 
 #endif

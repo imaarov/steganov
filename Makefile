@@ -1,5 +1,5 @@
 cc=gcc
-CFLAGS= -DDEBUG -O -Wall -Wextra -Iinclude
+CFLAGS= -DENABLE_DEBUG -O -Wall -Wextra -Iinclude
 TARGET=bin/steganov
 SRC=$(wildcard src/*.c)
 OBJS=$(SRC:src/%.c=build/%.o)

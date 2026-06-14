@@ -132,34 +132,20 @@ char *decodeWAV(FILE *file) {
 }
 
 bool readStandardHeaderInfo(FILE *file) {
-    Byte headerSignature[WAV_HEADER_SIZE];
-    if (fread(headerSignature, sizeof(Byte), WAV_HEADER_SIZE, file) !=
-        WAV_HEADER_SIZE) {
-        FATAL("Failed to read header signature");
+    WAV_Header header;
+    if (fread(&header, sizeof(header), 1, file) != 1) {
+        FATAL("failed to read the file header section");
         return false;
     }
-    DEBUG("the header signature is : %.4s\n", headerSignature);
-    if (signatureIsNotValid(headerSignature)) {
-        return false;
-    }
-
-    Byte fileSize[WAV_FILE_SIZE_FIELD_SIZE];
-    if (fread(fileSize, sizeof(Byte), WAV_FILE_SIZE_FIELD_SIZE, file) !=
-        WAV_FILE_SIZE_FIELD_SIZE) {
-        FATAL("Failed to read file size field in header");
+    DEBUG("the header signature is : %.4s\n", header.signature);
+    if (signatureIsNotValid(header.signature)) {
         return false;
     }
     uint32_t decimalFileSize =
-        hexaToDecimal(fileSize, WAV_FILE_SIZE_FIELD_SIZE);
+        hexaToDecimal(header.size, WAV_FILE_SIZE_FIELD_SIZE);
     DEBUG("INFO: file size is : %d kb", decimalFileSize + 8);
 
-    Byte format[WAV_FORMAT_FIELD_SIZE];
-    if (fread(format, sizeof(Byte), WAV_FORMAT_FIELD_SIZE, file) !=
-        WAV_FORMAT_FIELD_SIZE) {
-        FATAL("Failed to read format in header");
-        return false;
-    }
-    DEBUG("INFO: format type is : %.4s", format);
+    DEBUG("INFO: format type is : %.4s", header.format);
     return true;
 }
 
@@ -196,56 +182,28 @@ bool readChunksUntilData(FILE **file) {
 }
 
 bool readFMTChunk(FILE *file) {
-    Byte chunkSize[WAV_CHUNK_SIZE_FIELD_SIZE];
-    if (fread(chunkSize, sizeof(Byte), WAV_CHUNK_SIZE_FIELD_SIZE, file) !=
-        WAV_CHUNK_SIZE_FIELD_SIZE) {
-        FATAL("failed to read the fmt chunk size in header");
+    WAV_FMT fmt;
+    if (fread(&fmt, sizeof(fmt), 1, file) != 1) {
+        FATAL("failed to read the fmt chunk");
         return false;
     }
-    uint32_t decimalChunkSize =
-        hexaToDecimal(chunkSize, WAV_CHUNK_SIZE_FIELD_SIZE);
-    Byte audioFormat[WAV_FMT_AUDIO_FORMAT_SIZE];
-    if (fread(audioFormat, sizeof(Byte), WAV_FMT_AUDIO_FORMAT_SIZE, file) !=
-        WAV_FMT_AUDIO_FORMAT_SIZE) {
-        FATAL("Failed to read audio format in header");
-        return false;
-    }
+    uint32_t chunkSize = hexaToDecimal(fmt.size, WAV_CHUNK_SIZE_FIELD_SIZE);
+    DEBUG("fmt chunk size is : %u", chunkSize);
     DEBUG("audio format is : %u (1 for PCM)",
-          hexaToDecimal(audioFormat, WAV_FMT_AUDIO_FORMAT_SIZE));
-
-    Byte numChannels[WAV_FMT_NUM_CHANNELS_SIZE];
-    if (fread(numChannels, sizeof(Byte), WAV_FMT_NUM_CHANNELS_SIZE, file) !=
-        WAV_FMT_NUM_CHANNELS_SIZE) {
-        FATAL("Failed to read number of channels in header");
-        return false;
-    }
+          hexaToDecimal(fmt.audioFormat, WAV_FMT_AUDIO_FORMAT_SIZE));
     DEBUG("number of channels : %u, mono or stereo",
-          hexaToDecimal(numChannels, WAV_FMT_NUM_CHANNELS_SIZE));
-
-    Byte sampleRate[WAV_FMT_SAMPLE_RATE_SIZE];
-    if (fread(sampleRate, sizeof(Byte), WAV_FMT_SAMPLE_RATE_SIZE, file) !=
-        WAV_FMT_SAMPLE_RATE_SIZE) {
-        FATAL("Failed to read sample rate in header");
-        return false;
-    }
+          hexaToDecimal(fmt.numChannels, WAV_FMT_NUM_CHANNELS_SIZE));
     DEBUG("sample rate : %uz, %ukz",
-          hexaToDecimal(sampleRate, WAV_FMT_SAMPLE_RATE_SIZE),
-          hexaToDecimal(sampleRate, WAV_FMT_SAMPLE_RATE_SIZE) / 1000);
+          hexaToDecimal(fmt.sampleRate, WAV_FMT_SAMPLE_RATE_SIZE),
+          hexaToDecimal(fmt.sampleRate, WAV_FMT_SAMPLE_RATE_SIZE) / 1000);
 
-    fseek(file, WAV_FMT_BYTE_RATE_SIZE + WAV_FMT_BLOCK_ALIGN_SIZE, SEEK_CUR);
-    Byte bitsPerSampleBytes[WAV_FMT_BITS_PER_SAMPLE_SIZE];
-    if (fread(bitsPerSampleBytes, sizeof(Byte), WAV_FMT_BITS_PER_SAMPLE_SIZE,
-              file) != WAV_FMT_BITS_PER_SAMPLE_SIZE) {
-        FATAL("Failed to read the bits per sample in header of FMT");
-        return false;
-    }
     uint32_t decimalBitsPerSample =
-        hexaToDecimal(bitsPerSampleBytes, WAV_FMT_BITS_PER_SAMPLE_SIZE);
+        hexaToDecimal(fmt.bitsPerSample, WAV_FMT_BITS_PER_SAMPLE_SIZE);
     bitsPerSample = decimalBitsPerSample;
     DEBUG("bits per sample is : %d", decimalBitsPerSample);
-    if (decimalChunkSize > 16) { // weird but whatever
+    if (chunkSize > WAV_FMT_DEFAULT_CHUNK_SIZE) { // weird but whatever
         DEBUG("FMT chunk size is not standard !!!");
-        fseek(file, decimalChunkSize - 16, SEEK_CUR);
+        fseek(file, chunkSize - WAV_FMT_DEFAULT_CHUNK_SIZE, SEEK_CUR);
     }
     return true;
 }
