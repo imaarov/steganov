@@ -73,6 +73,7 @@ And all of that is also an assumption, in a WAV file , the header directly tells
 - [ ] Implement Huffman algorithm
 - [ ] Implement LZ77 algorithm
 - [ ] Implement DEFLATE decompression/compression
+- [ ] Implement Knuth Morris Pratt algorithm
 - [ ] Come up with another algorithm besides LSB
 - [ ] Implement encoding/decoding for PNG
 - [ ] Implement the Huffman algorithm for encoding/decoding, and provide the user with the option to select from the available algorithms
