@@ -71,7 +71,7 @@ And all of that is also an assumption, in a WAV file , the header directly tells
 - [x] Implement Adler32 algorithm
 - [ ] Implement bitstream
 - [ ] Implement Huffman algorithm
-- [ ] Implement LZ77 algorithm
+- [x] Implement LZ77 algorithm
 - [ ] Implement DEFLATE decompression/compression
 - [ ] Implement Knuth Morris Pratt algorithm
 - [ ] Come up with another algorithm besides LSB
