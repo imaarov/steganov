@@ -23,7 +23,9 @@ If we have 1 byte data, then we need (1 * 8) Byte to store that.
 
 ```c
 char *data = "hi";
-unsigned int minimumFileSize = strlen(data) * 8 // file size in bytes;
+unsigned int minimumFileSize = strlen(data) * 8 // file size in bytes
+                                                // minimum file size mean minimum chunks of data we can manipulate
+                                                // without causing any corruption of the file
 ```
 
 In other words, we should have one byte of file data for each 1 bit of your message or data plan to embed it, the math above its not accurate because we should subtract it by the header size of the file plus the reserved size, because we don't want to corrupt the file, we should not manipulate positions that are not meant to be modified.
@@ -46,7 +48,7 @@ or
 ```
 d8ff
 ```
-And as you should know by now, CPU interprets these as little-endian, so we should not manipulate both bytes. We should only manipulate the least significant bit of the byte that is the least significant.
+And as you should know by now, CPU interprets these as little-endian(depend on your CPU architecture), so we should not manipulate both bytes. We should only manipulate the least significant bit of the byte that is the least significant.
 
 In the above example, the data is in little-endian format, which means that `sample[0]`is the byte that we should manipulate. The sample is actually interpreted like this:
 ```
@@ -55,6 +57,10 @@ In the above example, the data is in little-endian format, which means that `sam
 
 Based on that we should only manipulate the LSB of the `oxd8` byte.
 And all of that is also an assumption, in a WAV file , the header directly tells you the `BitsPerSample` value so you know what to do for LSB encoding and decoding.
+
+Another type of endianness also exists, which is not the interpretation fo the CPU, but rather the way a sample represented by multiple bytes in the file. That is, we now have to consider the endian type of the chunk we need to read data from and write data to.
+
+As I move to PNG, I find that LSB manipulation is the easiest part; the hard part is reaching the raw data. For example, in PNG, the raw pixel data is not stored in a raw format, the chunks and the mechanism of storing data become complex. It resides behind layers of compresssoin algorithms, like Huffman and LZ77, that togethre construct the DEFLATE algorithm pipeline, which I am implementing from scratch here.
 
 
 ### Supported File Types:
