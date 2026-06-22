@@ -75,6 +75,7 @@ And all of that is also an assumption, in a WAV file , the header directly tells
 - [x] Implement LZ77 algorithm
 - [ ] Implement DEFLATE decompression/compression pipeline
 - [ ] Implement Knuth Morris Pratt algorithm
+- [ ] Implement Min heap priority for huffman algorithm
 - [ ] Come up with another algorithm besides LSB
 - [ ] Implement encoding/decoding for PNG
 - [ ] Implement the Huffman algorithm for encoding/decoding, and provide the user with the option to select from the available algorithms
