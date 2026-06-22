@@ -70,7 +70,8 @@ And all of that is also an assumption, in a WAV file , the header directly tells
 - [x] Implement CRC(Cyclic Redundancy Codes) Algorithm
 - [x] Implement Adler32 algorithm
 - [ ] Implement bitstream
-- [ ] Implement Huffman algorithm
+- [x] Implement Huffman algorithm
+- [x] Implement canonical huffman algorithm
 - [x] Implement LZ77 algorithm
 - [ ] Implement DEFLATE decompression/compression
 - [ ] Implement Knuth Morris Pratt algorithm
