@@ -73,6 +73,7 @@ And all of that is also an assumption, in a WAV file , the header directly tells
 - [x] Implement Huffman algorithm
 - [x] Implement canonical huffman algorithm
 - [x] Implement LZ77 algorithm
+- [ ] Make basic LZ77 algorithm compatible with DEFLATE 
 - [ ] Implement DEFLATE decompression/compression pipeline
 - [ ] Implement Knuth Morris Pratt algorithm
 - [ ] Implement Min heap priority for huffman algorithm
