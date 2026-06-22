@@ -69,11 +69,11 @@ And all of that is also an assumption, in a WAV file , the header directly tells
 - [x] Implement decoding from a file
 - [x] Implement CRC(Cyclic Redundancy Codes) Algorithm
 - [x] Implement Adler32 algorithm
-- [ ] Implement bitstream
+- [x] Implement bitstream
 - [x] Implement Huffman algorithm
 - [x] Implement canonical huffman algorithm
 - [x] Implement LZ77 algorithm
-- [ ] Implement DEFLATE decompression/compression
+- [ ] Implement DEFLATE decompression/compression pipeline
 - [ ] Implement Knuth Morris Pratt algorithm
 - [ ] Come up with another algorithm besides LSB
 - [ ] Implement encoding/decoding for PNG
