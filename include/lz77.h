@@ -19,6 +19,7 @@ typedef struct {
 typedef enum {
     LITERAL,
     MATCH,
+    EOB_TOKEN,
 } token_type;
 
 typedef struct {
@@ -28,6 +29,12 @@ typedef struct {
     uint16_t distance;
 } lz_token_t;
 
-void lz_77_encode(Byte *data, uint32_t data_len);
+typedef struct {
+    lz_token_t *tokens;
+    uint32_t size;
+} lz_tokens_stream_t;
+
+lz_tokens_stream_t *lz_77_encode(Byte *data, uint32_t data_len);
+void free_lz77_tokens(lz_token_t *tokens);
 
 #endif

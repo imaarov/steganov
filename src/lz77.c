@@ -12,18 +12,24 @@ void print_lz77_tokens(lz_token_t *tokens, uint32_t tokens_size);
 int main() {
     Byte *data = (Byte *)"abcabcabcabcabcXabcabcabcabcabc";
     uint32_t data_len = strlen((char *)data);
-    lz_77_encode(data, data_len);
+    lz_tokens_stream_t *tokens_stream = lz_77_encode(data, data_len);
+    if (NULL == tokens_stream) {
+        return 1;
+    }
+    print_lz77_tokens(tokens_stream->tokens, tokens_stream->size);
+    free_lz77_tokens(tokens_stream->tokens);
+    free(tokens_stream);
     return 0;
 }
 
-void lz_77_encode(Byte *data, uint32_t data_len) {
+lz_tokens_stream_t *lz_77_encode(Byte *data, uint32_t data_len) {
     if (NULL == data) {
         FATAL("data passed to the lz_77_encode is NULL");
-        return;
+        return NULL;
     }
     if (data_len == 0) {
         FATAL("data_len of passed data is 0");
-        return;
+        return NULL;
     }
 
     uint32_t pointer = 0; // point to the first element
@@ -38,7 +44,7 @@ void lz_77_encode(Byte *data, uint32_t data_len) {
     uint32_t tokens_size = 0;
     if (NULL == tokens) {
         FATAL("failed to allocate memory for the LZ77 tokens");
-        return;
+        return NULL;
     }
     while (pointer < data_len) {
         match_t match = find_match(data, data_len, pointer);
@@ -65,7 +71,20 @@ void lz_77_encode(Byte *data, uint32_t data_len) {
         }
     }
 
-    print_lz77_tokens(tokens, tokens_size);
+    lz_token_t token;
+    token.type = EOB_TOKEN;
+    token.distance = 0;
+    token.length = 0;
+    tokens[tokens_size] = token;
+    lz_tokens_stream_t *tokens_stream = malloc(sizeof(lz_tokens_stream_t));
+    if (NULL == tokens_stream) {
+        FATAL("failed to allocate memory for token stream");
+        free_lz77_tokens(tokens);
+        return NULL;
+    }
+    tokens_stream->tokens = tokens;
+    tokens_stream->size = tokens_size + 1;
+    return tokens_stream;
 }
 
 static match_t find_match(Byte *data, uint32_t data_len, uint32_t pointer) {
@@ -107,9 +126,13 @@ void print_lz77_tokens(lz_token_t *tokens, uint32_t tokens_size) {
     for (uint32_t i = 0; i < tokens_size; i++) {
         if (tokens[i].type == LITERAL) {
             printf("[LITERAL] %c\n", (unsigned char)tokens[i].literal);
-        } else {
+        } else if (tokens[i].type == MATCH) {
             printf("[MATCH] D %u, L %u\n", tokens[i].distance,
                    tokens[i].length);
+        } else {
+            printf("[EOB]\n");
         }
     }
 }
+
+void free_lz77_tokens(lz_token_t *tokens) { free(tokens); }
