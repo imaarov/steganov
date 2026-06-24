@@ -14,3 +14,7 @@ build/%.o: src/%.c
 
 clean:
 	rm -rf build
+
+.PHONY: format
+format:
+	find . -type f \( -name '*.c' -o -name '*.h' \) -exec clang-format -i {} +
