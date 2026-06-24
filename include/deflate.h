@@ -15,16 +15,17 @@ typedef struct {
     uint16_t symbol;
     uint16_t min_length;
     uint16_t max_length;
-    uint8_t  extra_bits;
+    uint8_t extra_bits;
 } length_code_t;
 
 typedef struct {
-    uint8_t  symbol;
+    uint8_t symbol;
     uint16_t min_length;
     uint16_t max_length;
-    uint8_t  extra_bits;
+    uint8_t extra_bits;
 } distance_code_t;
 
+// clang-format off
 static const length_code_t LENGTH_CODES[] = {
     {257,   3,   3, 0},
     {258,   4,   4, 0},
@@ -108,5 +109,6 @@ static const distance_code_t DISTANCE_CODES[] = {
     {28, 16385, 24576, 13},
     {29, 24577, 32768, 13}
 };
+// clang-format on
 
 #endif
