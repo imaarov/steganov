@@ -9,7 +9,7 @@
 #ifndef DEFLATE_H
 #define DEFLATE_H
 
-#include <cstdint>
+#include <stdint.h>
 
 typedef struct {
     uint16_t symbol;
