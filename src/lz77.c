@@ -88,7 +88,6 @@ Byte *lz_77_decode(const lz_tokens_stream_t *lz77_stream) {
     for (uint32_t data_index = 0, lz_index = 0; lz_index < lz77_stream->size;
          lz_index++, data_index++) {
         if (lz77_stream->tokens[lz_index].type == LITERAL) {
-            printf("LITERAL : %c\n", lz77_stream->tokens[lz_index].literal);
             decoded_data[data_index] = lz77_stream->tokens[lz_index].literal;
         } else if (lz77_stream->tokens[lz_index].type == MATCH) {
             if (lz77_stream->tokens[lz_index].length > 258) {
@@ -110,7 +109,6 @@ Byte *lz_77_decode(const lz_tokens_stream_t *lz77_stream) {
                 decoded_data = temp;
                 allocated_size += lz77_stream->tokens[lz_index].length;
             }
-            printf("lz index : %u", lz_index);
             for (uint32_t match_begin = data_index -
                                         lz77_stream->tokens[lz_index].distance,
                           len = 0;
