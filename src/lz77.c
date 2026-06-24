@@ -9,21 +9,6 @@
 static match_t find_match(Byte *data, uint32_t data_len, uint32_t pointer);
 void print_lz77_tokens(lz_token_t *tokens, uint32_t tokens_size);
 
-int main() {
-    Byte *data = (Byte *)"abcabcabcabcabcXabcabcabcabcabc";
-    uint32_t data_len = strlen((char *)data);
-    lz_tokens_stream_t *tokens_stream = lz_77_encode(data, data_len);
-    if (NULL == tokens_stream) {
-        return 1;
-    }
-    print_lz77_tokens(tokens_stream->tokens, tokens_stream->size);
-    Byte *res = lz_77_decode(tokens_stream);
-    printf("the encoded data: %s", res);
-    free_lz77_tokens(tokens_stream->tokens);
-    free(tokens_stream);
-    return 0;
-}
-
 lz_tokens_stream_t *lz_77_encode(Byte *data, uint32_t data_len) {
     if (NULL == data) {
         FATAL("data passed to the lz_77_encode is NULL");
