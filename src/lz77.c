@@ -95,28 +95,22 @@ Byte *lz_77_decode(const lz_tokens_stream_t *lz77_stream) {
                 free(decoded_data);
                 return NULL;
             }
-            if (data_index + lz77_stream->tokens[lz_index].length >
-                allocated_size) {
-                Byte *temp = realloc(
-                    decoded_data,
-                    allocated_size +
-                        (sizeof(Byte) * lz77_stream->tokens[lz_index].length));
+            if (data_index + lz77_stream->tokens[lz_index].length > allocated_size) {
+                Byte *temp =
+                    realloc(decoded_data,
+                            allocated_size + (sizeof(Byte) * lz77_stream->tokens[lz_index].length));
                 if (NULL == temp) {
-                    FATAL(
-                        "failed to reallocate memory for decoding lz77 tokens");
+                    FATAL("failed to reallocate memory for decoding lz77 tokens");
                     return decoded_data;
                 }
                 decoded_data = temp;
                 allocated_size += lz77_stream->tokens[lz_index].length;
             }
-            for (uint32_t match_begin = data_index -
-                                        lz77_stream->tokens[lz_index].distance,
+            for (uint32_t match_begin = data_index - lz77_stream->tokens[lz_index].distance,
                           len = 0;
-                 len < lz77_stream->tokens[lz_index].length;
-                 match_begin++, len++) {
+                 len < lz77_stream->tokens[lz_index].length; match_begin++, len++) {
                 if (match_begin > (data_index - 1)) {
-                    match_begin =
-                        data_index - lz77_stream->tokens[lz_index].distance;
+                    match_begin = data_index - lz77_stream->tokens[lz_index].distance;
                 }
                 decoded_data[data_index++] = decoded_data[match_begin];
             }
@@ -139,8 +133,7 @@ static match_t find_match(Byte *data, uint32_t data_len, uint32_t pointer) {
             uint32_t match_index = i;
             uint32_t pointer_index = pointer;
             while (pointer_index < data_len && match_index < data_len &&
-                   data[match_index] == data[pointer_index] &&
-                   temp_match_len < MAX_MATCH_LENGTH) {
+                   data[match_index] == data[pointer_index] && temp_match_len < MAX_MATCH_LENGTH) {
                 ++match_index;
                 ++pointer_index;
                 ++temp_match_len;
@@ -164,8 +157,7 @@ void print_lz77_tokens(lz_token_t *tokens, uint32_t tokens_size) {
         if (tokens[i].type == LITERAL) {
             printf("[LITERAL] %c\n", (unsigned char)tokens[i].literal);
         } else if (tokens[i].type == MATCH) {
-            printf("[MATCH] D %u, L %u\n", tokens[i].distance,
-                   tokens[i].length);
+            printf("[MATCH] D %u, L %u\n", tokens[i].distance, tokens[i].length);
         } else {
             printf("[EOB]\n");
         }

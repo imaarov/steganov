@@ -44,8 +44,7 @@ void prompt(char **fileName, char **secretMessage) {
                 printf("WARNING: could not find a message\n");
                 break;
             }
-            printf("INFO: secret message extracted from file is: %s\n",
-                   message);
+            printf("INFO: secret message extracted from file is: %s\n", message);
             break;
         case EXIT:
         default:

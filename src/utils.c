@@ -1,4 +1,4 @@
-#define MAX_FILE_NAME_LEN 255
+#define MAX_FILE_NAME_LEN      255
 #define MAX_SECRET_MESSAGE_LEN 255
 #include "../include/utils.h"
 #include <stdbool.h>

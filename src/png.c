@@ -34,14 +34,12 @@ char *decodePNG(FILE *file) {
 bool verifyPNGHeaderSignature(FILE *file) {
     DEBUG("Header information: ");
     Byte headerA[PNG_HEADER_SIZE / 2];
-    if (fread(headerA, sizeof(Byte), PNG_HEADER_SIZE / 2, file) !=
-        PNG_HEADER_SIZE / 2) {
+    if (fread(headerA, sizeof(Byte), PNG_HEADER_SIZE / 2, file) != PNG_HEADER_SIZE / 2) {
         FATAL("failed to read the PNG header section");
         return false;
     }
     Byte headerB[PNG_HEADER_SIZE / 2];
-    if (fread(headerB, sizeof(Byte), PNG_HEADER_SIZE / 2, file) !=
-        PNG_HEADER_SIZE / 2) {
+    if (fread(headerB, sizeof(Byte), PNG_HEADER_SIZE / 2, file) != PNG_HEADER_SIZE / 2) {
         FATAL("failed to read the PNG header section");
         return false;
     }
@@ -59,17 +57,13 @@ bool verifyPNGHeaderSignature(FILE *file) {
 
 bool readIHDRChunk(FILE *file) {
     PNGIHDRHeader ihdrHeader;
-    if (fread(&ihdrHeader, sizeof(PNGIHDRHeader) - sizeof(ihdrHeader.gap_pad),
-              1, file) != 1) {
+    if (fread(&ihdrHeader, sizeof(PNGIHDRHeader) - sizeof(ihdrHeader.gap_pad), 1, file) != 1) {
         FATAL("failed to read the IHDR header");
         return false;
     }
-    uint32_t ihdrSize =
-        hexaToDecimalBigEndian(ihdrHeader.size, PNG_LENGTH_FIELD_SIZE);
-    uint32_t width =
-        hexaToDecimalBigEndian(ihdrHeader.width, PNG_IHDR_WIDTH_FIELD_SIZE);
-    uint32_t height =
-        hexaToDecimalBigEndian(ihdrHeader.height, PNG_IHDR_HEIGHT_FIELD_SIZE);
+    uint32_t ihdrSize = hexaToDecimalBigEndian(ihdrHeader.size, PNG_LENGTH_FIELD_SIZE);
+    uint32_t width = hexaToDecimalBigEndian(ihdrHeader.width, PNG_IHDR_WIDTH_FIELD_SIZE);
+    uint32_t height = hexaToDecimalBigEndian(ihdrHeader.height, PNG_IHDR_HEIGHT_FIELD_SIZE);
     DEBUG("IHDR chunk size: %d", ihdrSize);
     DEBUG("IHDR ID: %.4s", (char *)ihdrHeader.ID);
     DEBUG("IHDR width: %d", width);
@@ -81,20 +75,17 @@ bool readIHDRChunk(FILE *file) {
     // CRC include both chuck data section + chunk type section
     uint32_t crcDataSize = ihdrSize + PNG_CHUNK_ID_SIZE;
     Byte *data = (Byte *)&ihdrHeader;
-    data = data +
-           PNG_LENGTH_FIELD_SIZE; // crc exclude the size field, so i skip that
+    data = data + PNG_LENGTH_FIELD_SIZE; // crc exclude the size field, so i skip that
     uint32_t crc = crc32_calculate(data, crcDataSize);
     DEBUG("the CRC of the IHDR (Calculated by built in CRC Checksum "
           "calculator)is : 0x%04x",
           crc);
     Byte IHDRCrc[PNG_CRC_FIELD_SIZE];
-    if (fread(IHDRCrc, sizeof(Byte), PNG_CRC_FIELD_SIZE, file) !=
-        PNG_CRC_FIELD_SIZE) {
+    if (fread(IHDRCrc, sizeof(Byte), PNG_CRC_FIELD_SIZE, file) != PNG_CRC_FIELD_SIZE) {
         FATAL("failed to read the CRC Checksum of IHDR chunk");
         return false;
     }
-    uint32_t decimalIHDRCRC =
-        hexaToDecimalBigEndian(IHDRCrc, PNG_CRC_FIELD_SIZE);
+    uint32_t decimalIHDRCRC = hexaToDecimalBigEndian(IHDRCrc, PNG_CRC_FIELD_SIZE);
     DEBUG("the actual file CRC Checksum of IHDR : 0x%04x", decimalIHDRCRC);
     if (decimalIHDRCRC != crc) {
         FATAL("Calculated CRC checksum is not the same as the actual CRC in "
@@ -109,19 +100,16 @@ uint32_t getFirstIDATChunkSize(FILE *file) {
     printf("\n");
     while (1) {
         Byte chunkSize[PNG_LENGTH_FIELD_SIZE];
-        if (fread(chunkSize, sizeof(Byte), PNG_LENGTH_FIELD_SIZE, file) !=
-            PNG_LENGTH_FIELD_SIZE) {
+        if (fread(chunkSize, sizeof(Byte), PNG_LENGTH_FIELD_SIZE, file) != PNG_LENGTH_FIELD_SIZE) {
             FATAL("can not read the chunk size");
             return 0;
         }
         Byte chunkId[PNG_CHUNK_ID_SIZE];
-        if (fread(chunkId, sizeof(Byte), PNG_LENGTH_FIELD_SIZE, file) !=
-            PNG_LENGTH_FIELD_SIZE) {
+        if (fread(chunkId, sizeof(Byte), PNG_LENGTH_FIELD_SIZE, file) != PNG_LENGTH_FIELD_SIZE) {
             FATAL("can not read the chunk id");
             return 0;
         }
-        uint32_t size =
-            hexaToDecimalBigEndian(chunkSize, PNG_LENGTH_FIELD_SIZE);
+        uint32_t size = hexaToDecimalBigEndian(chunkSize, PNG_LENGTH_FIELD_SIZE);
         DEBUG("chunk id found : %.4s, skipping : %u bytes", chunkId, size);
         if (0 == strcmp(PNG_IDAT_CHUNK_ID, (char *)chunkId)) {
             fseek(file, PNG_CHUNK_ID_SIZE + PNG_LENGTH_FIELD_SIZE, SEEK_CUR);
