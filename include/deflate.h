@@ -12,9 +12,9 @@
 #include "lz77.h"
 #include <stdint.h>
 
-#define DEFLATE_LENGTH_CODE_TABLE_SIZE         29
-#define DEFLATE_DISTANCE_CODE_TABLE_SIZE       30
-#define INVALID_DEFLATE_MIN_CODE               0
+#define DEFLATE_LENGTH_CODE_TABLE_SIZE   29
+#define DEFLATE_DISTANCE_CODE_TABLE_SIZE 30
+#define INVALID_DEFLATE_MIN_CODE         0
 
 typedef struct {
     uint16_t symbol;
@@ -35,15 +35,15 @@ typedef struct {
     uint16_t literal;
     uint16_t length_symbol;
     uint16_t length_extra_value;
-    uint8_t  length_extra_count;
+    uint8_t length_extra_count;
     uint16_t distance_symbol;
     uint16_t distance_extra_value;
-    uint8_t  distance_extra_count;
+    uint8_t distance_extra_count;
 } deflate_token_t;
 
 typedef struct {
     deflate_token_t *tokens;
-    uint32_t        size;
+    uint32_t size;
 } deflate_stream_t;
 
 deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream);

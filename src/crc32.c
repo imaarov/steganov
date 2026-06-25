@@ -12,7 +12,7 @@ u_int32_t crc32_calculate(const Byte *data, size_t size) {
     init_crc32_table();
     for (size_t i = 0; i < size; i++) {
         Byte index = data[i] ^ (Byte)crc;
-        crc = (crc >> 8) ^ table[index];
+        crc        = (crc >> 8) ^ table[index];
     }
 
     return crc ^ CRC32_XOROUT;

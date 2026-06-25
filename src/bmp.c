@@ -17,10 +17,10 @@ bool encodeBMP(FILE *file, const char *secretMessage) {
         FATAL("the file signature is not the same as standard BMP signature");
         return false;
     }
-    Byte *size = getSize(file);
+    Byte *size               = getSize(file);
     uint32_t decimalFileSize = hexaToDecimal(size, BMP_FILE_SIZE_FIELD_SIZE);
-    uint32_t messageLength = strlen(secretMessage);
-    Byte *pixelOffset = getFilePixelOffset(file);
+    uint32_t messageLength   = strlen(secretMessage);
+    Byte *pixelOffset        = getFilePixelOffset(file);
 
     uint32_t decimalPixelOffset = hexaToDecimal(pixelOffset, BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
     fseek(file, decimalPixelOffset, SEEK_SET);
@@ -45,9 +45,9 @@ bool encodeBMP(FILE *file, const char *secretMessage) {
     if (ableToEncode(availableFileSize, messageLength * 8)) {
         for (uint32_t i = 0; i < messageLength; i++) {
             for (int b = 0; b < 8; b++) {
-                Byte c = fgetc(file);
+                Byte c          = fgetc(file);
                 Byte messageLSB = (secretMessage[i] >> (7 - b)) & 1;
-                c = (c & 0b11111110) | messageLSB;
+                c               = (c & 0b11111110) | messageLSB;
 
                 fseek(file, -1, SEEK_CUR);
                 fputc(c, file);
@@ -69,7 +69,7 @@ bool encodeBMP(FILE *file, const char *secretMessage) {
 }
 
 char *decodeBMP(FILE *file) {
-    Byte *pixelOffset = getFilePixelOffset(file);
+    Byte *pixelOffset           = getFilePixelOffset(file);
     uint32_t decimalPixelOffset = hexaToDecimal(pixelOffset, BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
     DEBUG("file pixel offset is %u", decimalPixelOffset);
     fseek(file, decimalPixelOffset, SEEK_SET);
@@ -83,7 +83,7 @@ char *decodeBMP(FILE *file) {
             return NULL;
         }
         Byte c = (Byte)ch;
-        c = (c & 1) << (BMP_STEG_HEADER_SIZE - 1 - i);
+        c      = (c & 1) << (BMP_STEG_HEADER_SIZE - 1 - i);
         byteSize |= c;
     }
     DEBUG("the size of the message is : %u", byteSize);
@@ -93,11 +93,11 @@ char *decodeBMP(FILE *file) {
         Byte final = 0;
         for (int b = 0; b < 8; b++) {
             Byte c = fgetc(file);
-            c = (c & 1) << (7 - b);
+            c      = (c & 1) << (7 - b);
             final |= c;
         }
         message[i] = final;
-        final = 0;
+        final      = 0;
     }
     free(pixelOffset);
     return message;
@@ -117,7 +117,7 @@ bool encodeBMPSteganoSecretSize(uint32_t messageLength, uint32_t fileSize, uint3
     if (ableToEncode(fileSize - pixelOffset, messageLength * 8)) {
         for (uint32_t i = 0; i < BMP_STEG_HEADER_SIZE; i++) {
             Byte c = fgetc(file);
-            c = (c & 0b11111110) | ((messageLength >> (BMP_STEG_HEADER_SIZE - 1 - i)) & 1);
+            c      = (c & 0b11111110) | ((messageLength >> (BMP_STEG_HEADER_SIZE - 1 - i)) & 1);
 
             fseek(file, -1, SEEK_CUR);
             fputc(c, file);

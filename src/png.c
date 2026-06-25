@@ -62,8 +62,8 @@ bool readIHDRChunk(FILE *file) {
         return false;
     }
     uint32_t ihdrSize = hexaToDecimalBigEndian(ihdrHeader.size, PNG_LENGTH_FIELD_SIZE);
-    uint32_t width = hexaToDecimalBigEndian(ihdrHeader.width, PNG_IHDR_WIDTH_FIELD_SIZE);
-    uint32_t height = hexaToDecimalBigEndian(ihdrHeader.height, PNG_IHDR_HEIGHT_FIELD_SIZE);
+    uint32_t width    = hexaToDecimalBigEndian(ihdrHeader.width, PNG_IHDR_WIDTH_FIELD_SIZE);
+    uint32_t height   = hexaToDecimalBigEndian(ihdrHeader.height, PNG_IHDR_HEIGHT_FIELD_SIZE);
     DEBUG("IHDR chunk size: %d", ihdrSize);
     DEBUG("IHDR ID: %.4s", (char *)ihdrHeader.ID);
     DEBUG("IHDR width: %d", width);
@@ -74,8 +74,8 @@ bool readIHDRChunk(FILE *file) {
     DEBUG("IHDR interlace method: %d", ihdrHeader.interlaceMethod);
     // CRC include both chuck data section + chunk type section
     uint32_t crcDataSize = ihdrSize + PNG_CHUNK_ID_SIZE;
-    Byte *data = (Byte *)&ihdrHeader;
-    data = data + PNG_LENGTH_FIELD_SIZE; // crc exclude the size field, so i skip that
+    Byte *data           = (Byte *)&ihdrHeader;
+    data         = data + PNG_LENGTH_FIELD_SIZE; // crc exclude the size field, so i skip that
     uint32_t crc = crc32_calculate(data, crcDataSize);
     DEBUG("the CRC of the IHDR (Calculated by built in CRC Checksum "
           "calculator)is : 0x%04x",

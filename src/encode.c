@@ -7,7 +7,7 @@
 #include <string.h>
 
 bool encode(char *fileName, char *secretMessage) {
-    fileName = getFileName();
+    fileName      = getFileName();
     secretMessage = getSecret();
     if (fileName == NULL || secretMessage == NULL) {
         free(fileName);

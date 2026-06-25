@@ -10,7 +10,7 @@ void prompt(char **fileName, char **secretMessage);
 int main() {
     printf("steganov v%s\n", VERSION);
     char *secretMessage = NULL;
-    char *fileName = NULL;
+    char *fileName      = NULL;
     prompt(&fileName, &secretMessage);
 
     // clean up

@@ -86,7 +86,7 @@ char *decodeWAV(FILE *file) {
         return NULL;
     }
 
-    uint32_t messageSize = 0;
+    uint32_t messageSize    = 0;
     uint16_t bytesPerSample = bitsPerSample / 8;
     if (bytesPerSample == 0 || bytesPerSample != 2) {
         FATAL("the %u bytes per sample is not currently supported", bytesPerSample);
@@ -115,7 +115,7 @@ char *decodeWAV(FILE *file) {
             c |= ((sample[0] & 1) << (7 - b));
         }
         message[i] = c;
-        c = 0;
+        c          = 0;
     }
     DEBUG("secret message is : %s", message);
     return (char *)message;
@@ -186,7 +186,7 @@ bool readFMTChunk(FILE *file) {
           hexaToDecimal(fmt.sampleRate, WAV_FMT_SAMPLE_RATE_SIZE) / 1000);
 
     uint32_t decimalBitsPerSample = hexaToDecimal(fmt.bitsPerSample, WAV_FMT_BITS_PER_SAMPLE_SIZE);
-    bitsPerSample = decimalBitsPerSample;
+    bitsPerSample                 = decimalBitsPerSample;
     DEBUG("bits per sample is : %d", decimalBitsPerSample);
     if (chunkSize > WAV_FMT_DEFAULT_CHUNK_SIZE) { // weird but whatever
         DEBUG("FMT chunk size is not standard !!!");
