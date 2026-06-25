@@ -80,8 +80,9 @@ As I move to PNG, I find that LSB manipulation is the easiest part; the hard par
 - [x] Implement canonical huffman algorithm
 - [x] Implement LZ77 algorithm
 - [x] Make basic LZ77 algorithm compatible with DEFLATE 
-- [ ] Connect LZ77, LZ77 DEFLATE transformer, Huffman, Bitstream with each other to construct DEFLATE pipeline
-- [ ] Implement DEFLATE decompression/compression pipeline
+- [ ] Complete Huffman and finally generate canonical huffman table length
+- [ ] Add Bitstream for encoding/decoding
+- [ ] Create deflate module for connecting Huffman/LZ77/Bitstream together to make the final DEFLATE pipeline
 - [ ] Implement Knuth Morris Pratt algorithm
 - [ ] Implement Min heap priority for huffman algorithm
 - [ ] Come up with another algorithm besides LSB
