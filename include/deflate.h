@@ -87,7 +87,7 @@ static const length_code_t LENGTH_CODES[DEFLATE_LENGTH_CODE_TABLE_SIZE] = {
     {285, 258, 258, 0}
 };
 
-static const distance_code_t DISTANCE_CODES[] = {
+static const distance_code_t DISTANCE_CODES[DEFLATE_DISTANCE_CODE_TABLE_SIZE] = {
     { 0,     1,     1,  0},
     { 1,     2,     2,  0},
     { 2,     3,     3,  0},

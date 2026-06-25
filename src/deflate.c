@@ -28,7 +28,8 @@ deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream) {
             deflate[i].distance_extra_value= 0;
             deflate[i].distance_extra_count= 0;
         }else if (token_stream->tokens[i].type == MATCH) {
-            deflate[i].type = MATCH;
+            deflate[i].type    = MATCH;
+            deflate[i].literal = 0;
             length_code_t length_code = get_deflate_length_symbol(token_stream->tokens[i].length);
             distance_code_t distance_code = get_deflate_distance_symbol(token_stream->tokens[i].distance);
             if (length_code.min_length == INVALID_DEFLATE_MIN_CODE || distance_code.min_length == INVALID_DEFLATE_MIN_CODE) {
@@ -42,8 +43,14 @@ deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream) {
             deflate[i].distance_extra_value = token_stream->tokens[i].distance - distance_code.min_length;
             deflate[i].distance_extra_count = distance_code.extra_bits;
         }else {
-            deflate[i].type    = EOB_TOKEN;
-            deflate[i].literal = EOB;
+            deflate[i].type                 = EOB_TOKEN;
+            deflate[i].literal              = EOB;
+            deflate[i].length_symbol        = 0;
+            deflate[i].length_extra_value   = 0;
+            deflate[i].length_extra_count   = 0;
+            deflate[i].distance_symbol      = 0;
+            deflate[i].distance_extra_value = 0;
+            deflate[i].distance_extra_count = 0;
         }
     }
     deflate_stream_t *deflate_stream = malloc(sizeof(deflate_stream_t));
@@ -55,6 +62,14 @@ deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream) {
     deflate_stream->tokens = deflate;
     deflate_stream->size   = token_stream->size;
     return deflate_stream;
+}
+
+void free_deflate_stream(deflate_stream_t *deflate_stream) {
+    if (NULL == deflate_stream) {
+        return;
+    }
+    free(deflate_stream->tokens);
+    free(deflate_stream);
 }
 
 static length_code_t get_deflate_length_symbol(uint16_t length) {
