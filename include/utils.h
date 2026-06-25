@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #ifdef ENABLE_DEBUG
+#include <stdio.h>
 #define DEBUG(msg, ...) printf("[DEBUG]: %s:%d:" msg "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 #define FATAL(msg, ...) printf("[ERROR]: %s:%d:" msg "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 #else
