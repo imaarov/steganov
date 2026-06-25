@@ -20,7 +20,7 @@ min_heap_t *min_heap_create(uint32_t capacity) {
         return NULL;
     }
     min_heap->capacity = capacity;
-    min_heap->size = 0;
+    min_heap->size     = 0;
     return min_heap;
 }
 
@@ -37,19 +37,20 @@ void min_heap_insert(min_heap_t *min_heap, huffman_tree_t *huffman) {
         FATAL("the min heap is full");
         return;
     }
-    uint32_t index = min_heap->size;
+    uint32_t index                 = min_heap->size;
     min_heap->huffman_nodes[index] = huffman;
     min_heap->size += 1;
 
     while (index > 0) {
         uint32_t parent = (index - 1) / 2;
-        if (min_heap->huffman_nodes[parent]->frequency <= min_heap->huffman_nodes[index]->frequency) {
+        if (min_heap->huffman_nodes[parent]->frequency <=
+            min_heap->huffman_nodes[index]->frequency) {
             break;
         }
-        huffman_tree_t *temp = min_heap->huffman_nodes[parent];
+        huffman_tree_t *temp            = min_heap->huffman_nodes[parent];
         min_heap->huffman_nodes[parent] = min_heap->huffman_nodes[index];
-        min_heap->huffman_nodes[index] = temp;
-        index = parent;
+        min_heap->huffman_nodes[index]  = temp;
+        index                           = parent;
     }
 }
 
@@ -62,30 +63,32 @@ huffman_tree_t *min_heap_get_min(min_heap_t *min_heap) {
         FATAL("can not get minimum from an empty heap");
         return NULL;
     }
-    huffman_tree_t *min = min_heap->huffman_nodes[0];
+    huffman_tree_t *min        = min_heap->huffman_nodes[0];
     min_heap->huffman_nodes[0] = min_heap->huffman_nodes[min_heap->size - 1];
     min_heap->size -= 1;
     uint32_t index = 0;
     while (1) {
-        uint32_t left_child = (2 * index) + 1;
-        uint32_t right_child = (2 * index) + 2;
+        uint32_t left_child    = (2 * index) + 1;
+        uint32_t right_child   = (2 * index) + 2;
         huffman_tree_t *lowest = min_heap->huffman_nodes[index];
-        uint32_t lowest_index = index;
-        if (left_child < min_heap->size && min_heap->huffman_nodes[left_child]->frequency < lowest->frequency) {
-            lowest = min_heap->huffman_nodes[left_child];
+        uint32_t lowest_index  = index;
+        if (left_child < min_heap->size &&
+            min_heap->huffman_nodes[left_child]->frequency < lowest->frequency) {
+            lowest       = min_heap->huffman_nodes[left_child];
             lowest_index = left_child;
         }
-        if (right_child < min_heap->size && min_heap->huffman_nodes[right_child]->frequency < lowest->frequency) {
-            lowest = min_heap->huffman_nodes[right_child];
+        if (right_child < min_heap->size &&
+            min_heap->huffman_nodes[right_child]->frequency < lowest->frequency) {
+            lowest       = min_heap->huffman_nodes[right_child];
             lowest_index = right_child;
         }
         if (lowest_index == index) {
             break;
         }
-        huffman_tree_t *temp = min_heap->huffman_nodes[index];
-        min_heap->huffman_nodes[index] = min_heap->huffman_nodes[lowest_index];
+        huffman_tree_t *temp                  = min_heap->huffman_nodes[index];
+        min_heap->huffman_nodes[index]        = min_heap->huffman_nodes[lowest_index];
         min_heap->huffman_nodes[lowest_index] = temp;
-        index = lowest_index;
+        index                                 = lowest_index;
     }
     return min;
 }

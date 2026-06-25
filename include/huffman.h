@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define DEFLATE_LITERAL_LENGTH_SIZE 285
-#define DEFLATE_DISTANCE_SIZE 30
+#define DEFLATE_DISTANCE_SIZE       30
 
 typedef struct {
     uint16_t *literal_length_frequency;

@@ -9,9 +9,10 @@ uint8_t get_active_distance_symbol(frequency_t *frequency);
 
 void initialize_leaves_array_from_frequency(frequency_t *frequency) {
     uint16_t literal_length_active_symbol = get_active_literal_length_symbol_count(frequency);
-    uint8_t  distance_active_symbol       = get_active_distance_symbol(frequency);
+    uint8_t distance_active_symbol        = get_active_distance_symbol(frequency);
 
-    huffman_tree_t *literal_length_leaves = malloc(sizeof(huffman_tree_t) * literal_length_active_symbol);
+    huffman_tree_t *literal_length_leaves =
+        malloc(sizeof(huffman_tree_t) * literal_length_active_symbol);
     if (NULL == literal_length_leaves) {
         FATAL("failed to allocated memory for literal length leaves");
         return;
@@ -24,18 +25,18 @@ void initialize_leaves_array_from_frequency(frequency_t *frequency) {
     for (uint16_t i = 0, j = 0; i < DEFLATE_LITERAL_LENGTH_SIZE; i++) {
         if (frequency->literal_length_frequency[i] != 0) {
             literal_length_leaves[j].frequency = frequency->literal_length_frequency[i];
-            literal_length_leaves[j].symbol = i;
-            literal_length_leaves[j].left = NULL;
-            literal_length_leaves[j].right = NULL;
+            literal_length_leaves[j].symbol    = i;
+            literal_length_leaves[j].left      = NULL;
+            literal_length_leaves[j].right     = NULL;
             ++j;
         }
     }
     for (uint8_t i = 0, j = 0; i < DEFLATE_DISTANCE_SIZE; i++) {
         if (frequency->distance_frequency[i] != 0) {
             distance_leaves[j].frequency = frequency->distance_frequency[i];
-            distance_leaves[j].symbol = i;
-            distance_leaves[j].left = NULL;
-            distance_leaves[j].right = NULL;
+            distance_leaves[j].symbol    = i;
+            distance_leaves[j].left      = NULL;
+            distance_leaves[j].right     = NULL;
             ++j;
         }
     }
@@ -62,14 +63,14 @@ frequency_t initialize_frequency_table(deflate_stream_t *deflate_stream) {
     for (uint32_t i = 0; i < deflate_stream->size; i++) {
         if (deflate_stream->tokens[i].type == LITERAL) {
             literal_and_length_frequency[deflate_stream->tokens[i].literal]++;
-        }else if (deflate_stream->tokens[i].type == MATCH) {
+        } else if (deflate_stream->tokens[i].type == MATCH) {
             distance_frequency[deflate_stream->tokens[i].distance_symbol]++;
             literal_and_length_frequency[deflate_stream->tokens[i].length_symbol]++;
-        }else {
+        } else {
             literal_and_length_frequency[EOB]++;
         }
     }
-    frequency.distance_frequency = distance_frequency;
+    frequency.distance_frequency       = distance_frequency;
     frequency.literal_length_frequency = literal_and_length_frequency;
     return frequency;
 }
