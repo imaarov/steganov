@@ -1,7 +1,7 @@
 #include "../include/huffman.h"
 #include "../include/deflate.h"
 #include "../include/min_heap.h"
-#include <cstdint>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,43 +11,132 @@ uint8_t get_active_distance_symbol(const frequency_t *frequency);
 frequency_t initialize_frequency_table(deflate_stream_t *deflate_stream);
 huffman_init_leaves *initialize_leaves_array_from_frequency(const frequency_t *frequency);
 void build_huffman_len_code(huffman_tree_t *root, huffman_code_t *code, uint16_t len);
+void destroy_huffman_tree(huffman_tree_t *root);
+void free_heap_nodes(min_heap_t *heap);
 
-void build_huffman_tree(deflate_stream_t *deflate) {
-    frequency_t frequency = initialize_frequency_table(deflate);
+canonical_huffman_code build_huffman_tree(deflate_stream_t *deflate) {
+    canonical_huffman_code canonical_code    = {.literal_len = NULL, .distance = NULL, .status = false};
+    frequency_t frequency                    = {0};
+    huffman_init_leaves *init_leaves         = NULL;
+    min_heap_t *min_heap_distance            = NULL;
+    huffman_tree_t *literal_len_root         = NULL;
+    huffman_tree_t *distance_root            = NULL;
+    huffman_code_t *literal_len_codes        = NULL;
+    huffman_code_t *distance_codes           = NULL;
+    huffman_code_t *literal_len_active_codes = NULL;
+    huffman_code_t *distance_active_codes    = NULL;
+    min_heap_t *min_heap_literal_len         = NULL;
+
+    if (NULL == deflate) {
+        goto cleanup;
+    }
+    frequency = initialize_frequency_table(deflate);
     if (NULL == frequency.distance_frequency) {
-        return;
+        goto cleanup;
     }
     if (NULL == frequency.literal_length_frequency) {
-        return;
+        goto cleanup;
     }
 
-    huffman_init_leaves *init_leaves = initialize_leaves_array_from_frequency(&frequency);
+    init_leaves = initialize_leaves_array_from_frequency(&frequency);
     if (NULL == init_leaves) {
-        return;
+        goto cleanup;
     }
-    if (NULL == init_leaves->literal_len_leaves) {
-        return;
+    uint16_t ll_count = init_leaves->literal_len_active_symbol;
+    uint8_t d_count = init_leaves->distance_active_symbol;
+
+    if (ll_count > 0 && NULL == init_leaves->literal_len_leaves) {
+        goto cleanup;
     }
-    if (NULL == init_leaves->distance_leaves) {
-        return;
+    if (d_count > 0 && NULL == init_leaves->distance_leaves) {
+        goto cleanup;
+    }
+    if (d_count > 0) {
+        min_heap_distance = min_heap_create(init_leaves->distance_active_symbol);
+        if (NULL == min_heap_distance) {
+            goto cleanup;
+        }
+        for (uint8_t i = 0; i < init_leaves->distance_active_symbol; i++) {
+            if (!min_heap_insert(min_heap_distance, init_leaves->distance_leaves[i]))
+                goto cleanup;
+        }
+        while (min_heap_distance->size > 1) {
+            huffman_tree_t *left   = min_heap_get_min(min_heap_distance);
+            huffman_tree_t *right  = min_heap_get_min(min_heap_distance);
+            huffman_tree_t *parent = malloc(sizeof(huffman_tree_t));
+            if (NULL == parent) {
+                FATAL("failed to allocated memory for huffman parent node");
+                goto cleanup;
+            }
+            parent->frequency = left->frequency + right->frequency;
+            parent->symbol    = 0;
+            parent->left      = left;
+            parent->right     = right;
+            if (!min_heap_insert(min_heap_distance, parent))
+                goto cleanup;
+        }
+
+        distance_root = min_heap_get_min(min_heap_distance);
+        if (NULL == distance_root) {
+            goto cleanup;
+        }
+
+        distance_codes = malloc(sizeof(huffman_code_t) * DEFLATE_DISTANCE_SIZE);
+        if (NULL == distance_codes) {
+            FATAL("failed to allocated memory for distance code's len type");
+            goto cleanup;
+        }
+
+        memset(distance_codes, 0, sizeof(huffman_code_t) * DEFLATE_DISTANCE_SIZE);
+
+        build_huffman_len_code(distance_root, distance_codes, 0);
+
+        distance_active_codes = malloc(sizeof(huffman_code_t) * init_leaves->distance_active_symbol);
+        if (NULL == distance_active_codes) {
+            goto cleanup;
+        }
+        for (uint16_t i = 0, j = 0; i < DEFLATE_DISTANCE_SIZE; i++) {
+            if (distance_codes[i].length != 0) {
+                distance_active_codes[j++] = distance_codes[i];
+            }
+        }
+
+        for (uint16_t i = 0; i < init_leaves->distance_active_symbol; i++) {
+            uint16_t size = i;
+            while (size > 0) {
+                if (distance_active_codes[size].length < distance_active_codes[size - 1].length ||
+                    (distance_active_codes[size].length == distance_active_codes[size - 1].length &&
+                     distance_active_codes[size].symbol < distance_active_codes[size - 1].symbol)) {
+                    huffman_code_t temp             = distance_active_codes[size];
+                    distance_active_codes[size]     = distance_active_codes[size - 1];
+                    distance_active_codes[size - 1] = temp;
+                    --size;
+                } else {
+                    break;
+                }
+            }
+        }
+        uint32_t code     = 0;
+        if (init_leaves->distance_active_symbol > 0) {
+            uint16_t prev_len = distance_active_codes[0].length;
+            for (uint16_t i = 0; i < init_leaves->distance_active_symbol; i++) {
+                code <<= (distance_active_codes[i].length - prev_len);
+                distance_active_codes[i].code = code;
+                prev_len                      = distance_active_codes[i].length;
+                ++code;
+            }
+        }
     }
 
-    min_heap_t *min_heap_literal_len = min_heap_create(init_leaves->literal_len_active_symbol);
+    min_heap_literal_len = min_heap_create(init_leaves->literal_len_active_symbol);
     if (NULL == min_heap_literal_len) {
-        return;
+        goto cleanup;
     }
 
-    min_heap_t *min_heap_distance = min_heap_create(init_leaves->distance_active_symbol);
-    if (NULL == min_heap_distance) {
-        return;
-    }
 
     for (uint16_t i = 0; i < init_leaves->literal_len_active_symbol; i++) {
-        min_heap_insert(min_heap_literal_len, &init_leaves->literal_len_leaves[i]);
-    }
-
-    for (uint8_t i = 0; i < init_leaves->distance_active_symbol; i++) {
-        min_heap_insert(min_heap_distance, &init_leaves->distance_leaves[i]);
+        if (!min_heap_insert(min_heap_literal_len, init_leaves->literal_len_leaves[i])) 
+            goto cleanup;
     }
 
     while (min_heap_literal_len->size > 1) {
@@ -56,64 +145,37 @@ void build_huffman_tree(deflate_stream_t *deflate) {
         huffman_tree_t *parent = malloc(sizeof(huffman_tree_t));
         if (NULL == parent) {
             FATAL("failed to allocated memory for huffman parent node");
-            return;
+            goto cleanup;
         }
         parent->frequency = left->frequency + right->frequency;
         parent->symbol    = 0;
         parent->left      = left;
         parent->right     = right;
-        min_heap_insert(min_heap_literal_len, parent);
+        if (!min_heap_insert(min_heap_literal_len, parent))
+            goto cleanup;
     }
-    while (min_heap_distance->size > 1) {
-        huffman_tree_t *left   = min_heap_get_min(min_heap_distance);
-        huffman_tree_t *right  = min_heap_get_min(min_heap_distance);
-        huffman_tree_t *parent = malloc(sizeof(huffman_tree_t));
-        if (NULL == parent) {
-            FATAL("failed to allocated memory for huffman parent node");
-            return;
-        }
-        parent->frequency = left->frequency + right->frequency;
-        parent->symbol    = 0;
-        parent->left      = left;
-        parent->right     = right;
-        min_heap_insert(min_heap_distance, parent);
-    }
-    huffman_tree_t *literal_len_root = min_heap_get_min(min_heap_literal_len);
+    literal_len_root = min_heap_get_min(min_heap_literal_len);
     if (NULL == literal_len_root) {
-        return;
+        goto cleanup;
     }
-    huffman_tree_t *distance_root = min_heap_get_min(min_heap_distance);
-    if (NULL == distance_root) {
-        return;
-    }
-    huffman_code_t *literal_len_codes =
-        malloc(sizeof(huffman_code_t) * DEFLATE_LITERAL_LENGTH_SIZE);
+    literal_len_codes = malloc(sizeof(huffman_code_t) * DEFLATE_LITERAL_LENGTH_SIZE);
     if (NULL == literal_len_codes) {
         FATAL("failed to allocated memory for literal and length code's len type");
-        return;
-    }
-    huffman_code_t *distance_codes = malloc(sizeof(huffman_code_t) * DEFLATE_DISTANCE_SIZE);
-    if (NULL == distance_codes) {
-        FATAL("failed to allocated memory for distance code's len type");
-        return;
+        goto cleanup;
     }
 
     memset(literal_len_codes, 0, sizeof(huffman_code_t) * DEFLATE_LITERAL_LENGTH_SIZE);
 
-    memset(distance_codes, 0, sizeof(huffman_code_t) * DEFLATE_DISTANCE_SIZE);
 
     build_huffman_len_code(literal_len_root, literal_len_codes, 0);
-    build_huffman_len_code(distance_root, distance_codes, 0);
-    huffman_code_t literal_len_active_codes[init_leaves->literal_len_active_symbol];
-    huffman_code_t distance_active_codes[init_leaves->distance_active_symbol];
+    literal_len_active_codes =
+        malloc(sizeof(huffman_code_t) * init_leaves->literal_len_active_symbol);
+    if (NULL == literal_len_active_codes) {
+        goto cleanup;
+    }
     for (uint16_t i = 0, j = 0; i < DEFLATE_LITERAL_LENGTH_SIZE; i++) {
         if (literal_len_codes[i].length != 0) {
             literal_len_active_codes[j++] = literal_len_codes[i];
-        }
-    }
-    for (uint16_t i = 0, j = 0; i < DEFLATE_DISTANCE_SIZE; i++) {
-        if (distance_codes[i].length != 0) {
-            distance_active_codes[j++] = distance_codes[i];
         }
     }
     for (uint16_t i = 0; i < init_leaves->literal_len_active_symbol; i++) {
@@ -134,21 +196,44 @@ void build_huffman_tree(deflate_stream_t *deflate) {
         }
     }
 
-    for (uint16_t i = 0; i < init_leaves->distance_active_symbol; i++) {
-        uint16_t size = i;
-        while (size > 0) {
-            if (distance_active_codes[size].length < distance_active_codes[size - 1].length ||
-                (distance_active_codes[size].length == distance_active_codes[size - 1].length &&
-                 distance_active_codes[size].symbol < distance_active_codes[size - 1].symbol)) {
-                huffman_code_t temp             = distance_active_codes[size];
-                distance_active_codes[size]     = distance_active_codes[size - 1];
-                distance_active_codes[size - 1] = temp;
-                --size;
-            } else {
-                break;
-            }
+    uint32_t code     = 0;
+    if (init_leaves->literal_len_active_symbol > 0) {
+        uint16_t prev_len = literal_len_active_codes[0].length;
+        for (uint16_t i = 0; i < init_leaves->literal_len_active_symbol; i++) {
+            code <<= (literal_len_active_codes[i].length - prev_len);
+            literal_len_active_codes[i].code = code;
+            prev_len                         = literal_len_active_codes[i].length;
+            ++code;
         }
     }
+
+    canonical_code.literal_len = literal_len_active_codes;
+    canonical_code.distance    = distance_active_codes;
+    canonical_code.status = true;
+cleanup:
+    if (init_leaves) {
+        free(init_leaves->distance_leaves);
+        free(init_leaves->literal_len_leaves);
+        free(init_leaves);
+    }
+    if (min_heap_literal_len)
+        min_heap_destroy(min_heap_literal_len);
+    if (min_heap_distance)
+        min_heap_destroy(min_heap_distance);
+    if (literal_len_root)
+        destroy_huffman_tree(literal_len_root);
+    if (distance_root)
+        destroy_huffman_tree(distance_root);
+    if (!canonical_code.status) {
+        free(literal_len_active_codes);
+        free(distance_active_codes);
+    }
+    free(frequency.literal_length_frequency);
+    free(frequency.distance_frequency);
+    free(literal_len_codes);
+    free(distance_codes);
+
+    return canonical_code;
 }
 
 void build_huffman_len_code(huffman_tree_t *root, huffman_code_t *code, uint16_t len) {
@@ -161,7 +246,7 @@ void build_huffman_len_code(huffman_tree_t *root, huffman_code_t *code, uint16_t
     build_huffman_len_code(root->left, code, len + 1);
     build_huffman_len_code(root->right, code, len + 1);
     if (NULL == root->right && NULL == root->left) {
-        code[root->symbol].length = len;
+        code[root->symbol].length = len == 0 ? 1 : len;
         code[root->symbol].symbol = root->symbol;
     }
 }
@@ -169,49 +254,76 @@ void build_huffman_len_code(huffman_tree_t *root, huffman_code_t *code, uint16_t
 huffman_init_leaves *initialize_leaves_array_from_frequency(const frequency_t *frequency) {
     uint16_t literal_length_active_symbol = get_active_literal_length_symbol_count(frequency);
     uint8_t distance_active_symbol        = get_active_distance_symbol(frequency);
+    huffman_init_leaves *leaves           = NULL;
+    uint16_t literal_length_index         = 0;
+    uint16_t distance_index               = 0;
+    huffman_tree_t **literal_length_leaves = NULL;
+    huffman_tree_t **distance_leaves = NULL;
 
-    huffman_tree_t *literal_length_leaves =
-        malloc(sizeof(huffman_tree_t) * literal_length_active_symbol);
-    if (NULL == literal_length_leaves) {
-        FATAL("failed to allocated memory for literal length leaves");
-        return NULL;
+    if (literal_length_active_symbol > 0) {
+        literal_length_leaves =
+            malloc(sizeof(huffman_tree_t *) * literal_length_active_symbol);
+        if (NULL == literal_length_leaves) {
+            FATAL("failed to allocated memory for literal length leaves");
+            return NULL;
+        }
     }
-    huffman_tree_t *distance_leaves = malloc(sizeof(huffman_tree_t) * distance_active_symbol);
-    if (NULL == distance_leaves) {
-        FATAL("failed to allocated memory for distance leaves");
-        free(literal_length_leaves);
-        return NULL;
+    if (distance_active_symbol > 0) {
+        distance_leaves = malloc(sizeof(huffman_tree_t *) * distance_active_symbol);
+        if (NULL == distance_leaves) {
+            FATAL("failed to allocated memory for distance leaves");
+            free(literal_length_leaves);
+            return NULL;
+        }
     }
-    for (uint16_t i = 0, j = 0; i < DEFLATE_LITERAL_LENGTH_SIZE; i++) {
+    for (uint16_t i = 0; i < DEFLATE_LITERAL_LENGTH_SIZE; i++) {
         if (frequency->literal_length_frequency[i] != 0) {
-            literal_length_leaves[j].frequency = frequency->literal_length_frequency[i];
-            literal_length_leaves[j].symbol    = i;
-            literal_length_leaves[j].left      = NULL;
-            literal_length_leaves[j].right     = NULL;
-            ++j;
+            literal_length_leaves[literal_length_index] = malloc(sizeof(huffman_tree_t));
+            if (NULL == literal_length_leaves[literal_length_index]) {
+                goto error;
+            }
+            literal_length_leaves[literal_length_index]->frequency =
+                frequency->literal_length_frequency[i];
+            literal_length_leaves[literal_length_index]->symbol = i;
+            literal_length_leaves[literal_length_index]->left   = NULL;
+            literal_length_leaves[literal_length_index]->right  = NULL;
+            ++literal_length_index;
         }
     }
-    for (uint8_t i = 0, j = 0; i < DEFLATE_DISTANCE_SIZE; i++) {
+    for (uint8_t i = 0; i < DEFLATE_DISTANCE_SIZE; i++) {
         if (frequency->distance_frequency[i] != 0) {
-            distance_leaves[j].frequency = frequency->distance_frequency[i];
-            distance_leaves[j].symbol    = i;
-            distance_leaves[j].left      = NULL;
-            distance_leaves[j].right     = NULL;
-            ++j;
+            distance_leaves[distance_index] = malloc(sizeof(huffman_tree_t));
+            if (NULL == distance_leaves[distance_index]) {
+                goto error;
+            }
+            distance_leaves[distance_index]->frequency = frequency->distance_frequency[i];
+            distance_leaves[distance_index]->symbol    = i;
+            distance_leaves[distance_index]->left      = NULL;
+            distance_leaves[distance_index]->right     = NULL;
+            ++distance_index;
         }
     }
-    huffman_init_leaves *leaves = malloc(sizeof(huffman_init_leaves));
+    leaves = malloc(sizeof(huffman_init_leaves));
     if (NULL == leaves) {
-        free(literal_length_leaves);
-        free(distance_leaves);
         FATAL("failed to allocate memory for initial huffman leaves");
-        return NULL;
+        goto error;
     }
     leaves->literal_len_leaves        = literal_length_leaves;
     leaves->literal_len_active_symbol = literal_length_active_symbol;
     leaves->distance_leaves           = distance_leaves;
     leaves->distance_active_symbol    = distance_active_symbol;
     return leaves;
+
+error:
+    for (uint16_t i = 0; i < distance_index; i++) {
+        free(distance_leaves[i]);
+    }
+    free(distance_leaves);
+    for (uint16_t i = 0; i < literal_length_index; i++) {
+        free(literal_length_leaves[i]);
+    }
+    free(literal_length_leaves);
+    return NULL;
 }
 
 frequency_t initialize_frequency_table(deflate_stream_t *deflate_stream) {
@@ -239,7 +351,7 @@ frequency_t initialize_frequency_table(deflate_stream_t *deflate_stream) {
         } else if (deflate_stream->tokens[i].type == MATCH) {
             distance_frequency[deflate_stream->tokens[i].distance_symbol]++;
             literal_and_length_frequency[deflate_stream->tokens[i].length_symbol]++;
-        } else {
+        } else if (deflate_stream->tokens[i].type == EOB_TOKEN) {
             literal_and_length_frequency[EOB]++;
         }
     }
@@ -267,3 +379,13 @@ uint8_t get_active_distance_symbol(const frequency_t *frequency) {
     }
     return distance_active_symbol;
 }
+
+void destroy_huffman_tree(huffman_tree_t *root) {
+    if (NULL == root) {
+        return;
+    }
+    destroy_huffman_tree(root->left);
+    destroy_huffman_tree(root->right);
+    free(root);
+}
+
