@@ -1,6 +1,7 @@
 #ifndef HUFFMAN_H
 #define HUFFMAN_H
 
+#include "deflate.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -34,8 +35,13 @@ typedef struct {
 
 typedef struct {
     huffman_code_t *literal_len;
+    uint16_t literal_len_size;
     huffman_code_t *distance;
+    uint16_t distance_size;
     bool status;
 } canonical_huffman_code;
+
+canonical_huffman_code build_huffman_tree(deflate_stream_t *deflate);
+void print_huffman(const canonical_huffman_code *code);
 
 #endif

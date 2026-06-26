@@ -1,6 +1,7 @@
 #include "../include/huffman.h"
 #include "../include/deflate.h"
 #include "../include/min_heap.h"
+#include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -208,7 +209,9 @@ canonical_huffman_code build_huffman_tree(deflate_stream_t *deflate) {
     }
 
     canonical_code.literal_len = literal_len_active_codes;
+    canonical_code.literal_len_size = init_leaves->literal_len_active_symbol;
     canonical_code.distance    = distance_active_codes;
+    canonical_code.distance_size = init_leaves->distance_active_symbol;
     canonical_code.status = true;
 cleanup:
     if (init_leaves) {
@@ -234,6 +237,15 @@ cleanup:
     free(distance_codes);
 
     return canonical_code;
+}
+
+void print_huffman(const canonical_huffman_code *code) {
+    for (uint16_t i = 0; i < code->literal_len_size; i++) {
+        printf("literal : length: %u, code: %u, symbol: %u\n", code->literal_len[i].length, code->literal_len[i].code, code->literal_len[i].symbol);
+    }
+    for (uint16_t i = 0; i < code->distance_size; i++) {
+        printf("distance : length: %u, code: %u, symbol: %u\n", code->distance[i].length, code->distance[i].code, code->distance[i].symbol);
+    }
 }
 
 void build_huffman_len_code(huffman_tree_t *root, huffman_code_t *code, uint16_t len) {
