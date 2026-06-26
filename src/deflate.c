@@ -82,7 +82,7 @@ void print_deflate(const deflate_stream_t *deflate_stream) {
                     deflate_stream->tokens[i].distance_extra_count
                     );
         }else if (deflate_stream->tokens[i].type == EOB_TOKEN) {
-            printf("[EOB]: %u", deflate_stream->tokens[i].literal);
+            printf("[EOB]: %u\n", deflate_stream->tokens[i].literal);
         }
     }
 }
