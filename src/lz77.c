@@ -7,7 +7,6 @@
 #include <string.h>
 
 static match_t find_match(Byte *data, uint32_t data_len, uint32_t pointer);
-void print_lz77_tokens(lz_token_t *tokens, uint32_t tokens_size);
 
 lz_tokens_stream_t *lz_77_encode(Byte *data, uint32_t data_len) {
     if (NULL == data) {
@@ -137,12 +136,12 @@ static match_t find_match(Byte *data, uint32_t data_len, uint32_t pointer) {
                      .longest_match_len   = longest_match_len};
 }
 
-void print_lz77_tokens(lz_token_t *tokens, uint32_t tokens_size) {
+void print_lz77_tokens(lz_tokens_stream_t *stream, uint32_t tokens_size) {
     for (uint32_t i = 0; i < tokens_size; i++) {
-        if (tokens[i].type == LITERAL) {
-            printf("[LITERAL] %c\n", (unsigned char)tokens[i].literal);
-        } else if (tokens[i].type == MATCH) {
-            printf("[MATCH] D %u, L %u\n", tokens[i].distance, tokens[i].length);
+        if (stream->tokens[i].type == LITERAL) {
+            printf("[LITERAL] %c\n", (unsigned char)stream->tokens[i].literal);
+        } else if (stream->tokens[i].type == MATCH) {
+            printf("[MATCH] D %u, L %u\n", stream->tokens[i].distance, stream->tokens[i].length);
         } else {
             printf("[EOB]\n");
         }
