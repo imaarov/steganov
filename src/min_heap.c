@@ -2,6 +2,7 @@
 #include "../include/utils.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 min_heap_t *min_heap_create(uint32_t capacity) {
     if (0 == capacity) {
@@ -24,18 +25,18 @@ min_heap_t *min_heap_create(uint32_t capacity) {
     return min_heap;
 }
 
-void min_heap_insert(min_heap_t *min_heap, huffman_tree_t *huffman) {
+bool min_heap_insert(min_heap_t *min_heap, huffman_tree_t *huffman) {
     if (NULL == min_heap) {
         FATAL("min heap passed to the heap insert is NULL");
-        return;
+        return false;
     }
     if (NULL == huffman) {
         FATAL("huffman passed to the heap insert is NULL");
-        return;
+        return false;
     }
     if (min_heap->size == min_heap->capacity) {
         FATAL("the min heap is full");
-        return;
+        return false;
     }
     uint32_t index                 = min_heap->size;
     min_heap->huffman_nodes[index] = huffman;
@@ -52,6 +53,7 @@ void min_heap_insert(min_heap_t *min_heap, huffman_tree_t *huffman) {
         min_heap->huffman_nodes[index]  = temp;
         index                           = parent;
     }
+    return true;
 }
 
 huffman_tree_t *min_heap_get_min(min_heap_t *min_heap) {
