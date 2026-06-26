@@ -4,6 +4,13 @@ Hide your data inside other data
 steganov is a tool that hides your data (currently, data is only a string) inside other data (mainly files like images and audio), a technique called steganography.
 The basic form of doing steganography is manipulating the LSB (Least Significant Bit) and the LSBs we manipulate should not be the header section or in reserved sections of the file. 
 
+## Table of contents
+- [How its works](#how-its-works)
+- [Supported media](#supported-media)
+- [Commands](#commands)
+- [Todo](#todo)
+
+## How its works
 Most of the time standard files have standard blueprint, which contains the boundaries of each section for example: header, file size, reserved, actual data (for example pixels data).
 
 The part we aim to manipulate is the actual data, in this way (LSB way of embedding) it just manipulates the Least Significant Bit, so you really can't see a difference between the original file and the manipulated file and that's of course if we define the act of seeing as a shallow analyze of a file for example see the picture or hear the voice, that's you cant find any differences.
@@ -62,8 +69,30 @@ Another type of endianness also exists, which is not the interpretation fo the C
 
 As I move to PNG, I find that LSB manipulation is the easiest part; the hard part is reaching the raw data. For example, in PNG, the raw pixel data is not stored in a raw format, the chunks and the mechanism of storing data become complex. It resides behind layers of compresssoin algorithms, like Huffman and LZ77, that togethre construct the DEFLATE algorithm pipeline, which I am implementing from scratch here.
 
+## Commands
+build:
+```bash
+make
+```
+format:
+```bash
+make format
+```
+clean obj files:
+```bash
+make clean
+```
+build tests:
+```bash
+make test
+```
+run test
+```bash
+make run-test
+./bin/test_runner
+```
 
-### Supported File Types:
+### Supported media
 - BMP
 - WAV
 
