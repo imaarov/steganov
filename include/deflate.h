@@ -47,6 +47,7 @@ typedef struct {
 } deflate_stream_t;
 
 deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream);
+void print_deflate(const deflate_stream_t *deflate_stream);
 
 // clang-format off
 static const length_code_t LENGTH_CODES[DEFLATE_LENGTH_CODE_TABLE_SIZE] = {

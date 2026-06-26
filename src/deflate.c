@@ -1,6 +1,7 @@
 #include "../include/deflate.h"
 #include "../include/lz77.h"
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 static length_code_t get_deflate_length_symbol(uint16_t length);
@@ -45,7 +46,7 @@ deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream) {
             deflate[i].distance_extra_value =
                 token_stream->tokens[i].distance - distance_code.min_length;
             deflate[i].distance_extra_count = distance_code.extra_bits;
-        } else {
+        } else if (token_stream->tokens[i].type == EOB_TOKEN) {
             deflate[i].type                 = EOB_TOKEN;
             deflate[i].literal              = EOB;
             deflate[i].length_symbol        = 0;
@@ -65,6 +66,25 @@ deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream) {
     deflate_stream->tokens = deflate;
     deflate_stream->size   = token_stream->size;
     return deflate_stream;
+}
+
+void print_deflate(const deflate_stream_t *deflate_stream) {
+    for (uint16_t i = 0; i < deflate_stream->size; i++) {
+        if (deflate_stream->tokens[i].type == LITERAL) {
+            printf("[LITERAL] : %u\n", deflate_stream->tokens[i].literal);
+        }else if (deflate_stream->tokens[i].type == MATCH) {
+            printf("[MATCH] len symbol: %u,, len extra val: %u, len extra count: %u, distance symbol: %u, distance extra value: %u, distance_extra count: %u\n", 
+                    deflate_stream->tokens[i].length_symbol,
+                    deflate_stream->tokens[i].length_extra_value,
+                    deflate_stream->tokens[i].length_extra_count,
+                    deflate_stream->tokens[i].distance_symbol,
+                    deflate_stream->tokens[i].distance_extra_value,
+                    deflate_stream->tokens[i].distance_extra_count
+                    );
+        }else if (deflate_stream->tokens[i].type == EOB_TOKEN) {
+            printf("[EOB]: %u", deflate_stream->tokens[i].literal);
+        }
+    }
 }
 
 void free_deflate_stream(deflate_stream_t *deflate_stream) {
