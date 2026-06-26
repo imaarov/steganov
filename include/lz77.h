@@ -36,7 +36,7 @@ typedef struct {
 
 lz_tokens_stream_t *lz_77_encode(Byte *data, uint32_t data_len);
 Byte *lz_77_decode(const lz_tokens_stream_t *lz77_stream);
-void free_lz77_tokens(lz_token_t *tokens);
 void print_lz77_tokens(lz_tokens_stream_t *stream, uint32_t tokens_size);
+void free_lz77(lz_tokens_stream_t *token_stream);
 
 #endif
