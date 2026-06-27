@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+
 void test_lz77_token_stream() {
     char *data = "aaaabbbccd";
     uint8_t data_len = strlen(data);
