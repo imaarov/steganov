@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #define BMP_HEADER_SIZE                   2
-#define BMP_HEADER_SIGNATURE              0x424d // signature of BMP header (BM)
+#define BMP_HEADER_SIGNATURE              0x424d
 #define BMP_PIXEL_DATA_ADDRESS_OFFSET     10
 #define BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE 4
 #define BMP_STEG_HEADER_SIZE              32
