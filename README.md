@@ -4,6 +4,8 @@ Hide your data inside other data
 steganov is a tool that hides your data (currently, data is only a string) inside other data (mainly files like images and audio), a technique called steganography.
 The basic form of doing steganography is manipulating the LSB (Least Significant Bit) and the LSBs we manipulate should not be the header section or in reserved sections of the file. 
 
+Written in C, without using any third party libraries.
+
 ## Table of contents
 - [How its works](#how-its-works)
 - [Supported media](#supported-media)
