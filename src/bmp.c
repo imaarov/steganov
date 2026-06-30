@@ -13,6 +13,8 @@ Byte *get_size(FILE *file);
 Byte *get_file_pixel_offset(FILE *file);
 bool encode_bmp_stegano_secret_size(uint32_t message_length, uint32_t file_size,
                                     uint32_t pixel_offset, FILE *file);
+void jump_to_pixel_data(FILE *file, uint32_t pixel_offset);
+void jump_to_pixel_data_offset_address(FILE *file);
 
 bool encodeBMP(FILE *file, const char *secret_message) {
     if (header_signature_is_not_standard(get_header(file))) {
@@ -25,7 +27,8 @@ bool encodeBMP(FILE *file, const char *secret_message) {
     Byte *pixel_offset         = get_file_pixel_offset(file);
 
     uint32_t decimal_pixel_offset = hexaToDecimal(pixel_offset, BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
-    fseek(file, decimal_pixel_offset, SEEK_SET);
+    jump_to_pixel_data(file, decimal_pixel_offset);
+
     if (!encode_bmp_stegano_secret_size(message_length, decimal_file_size, decimal_pixel_offset,
                                         file)) {
         FATAL("can not encode steganography header that include secret message "
@@ -40,9 +43,7 @@ bool encodeBMP(FILE *file, const char *secret_message) {
         goto error;
     }
     if (ableToEncode(available_file_size, message_length * BYTES_NEEDED_FOR_ONE_SECRET_BYTE)) {
-        for (uint32_t i = 0; i < message_length; i++) {
-            embed_secret_byte_in_file(file, secret_message[i]);
-        }
+        embed_secret_in_file(file, message_length, secret_message);
     } else {
         FATAL("its not possible to store message data in the file because of "
               "the file size");
@@ -64,7 +65,7 @@ char *decodeBMP(FILE *file) {
     Byte *pixel_offset            = get_file_pixel_offset(file);
     uint32_t decimal_pixel_offset = hexaToDecimal(pixel_offset, BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
     DEBUG("file pixel offset is %u", decimal_pixel_offset);
-    fseek(file, decimal_pixel_offset, SEEK_SET);
+    jump_to_pixel_data(file, decimal_pixel_offset);
 
     uint32_t secret_byte_size = secret_byte_size = extract_secret_message_length_from_file(file);
 
@@ -78,7 +79,7 @@ char *decodeBMP(FILE *file) {
 }
 
 Byte *get_file_pixel_offset(FILE *file) {
-    fseek(file, BMP_PIXEL_DATA_ADDRESS_OFFSET, SEEK_SET);
+    jump_to_pixel_data_offset_address(file);
     Byte *pixel_offset = malloc(sizeof(Byte) * BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
     for (int i = 0; i < BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE; i++) {
         pixel_offset[i] = fgetc(file);
@@ -123,4 +124,12 @@ bool header_signature_is_not_standard(const Byte header[BMP_HEADER_SIZE]) {
     }
     DEBUG("File Signature is OK");
     return false;
+}
+
+void jump_to_pixel_data(FILE *file, uint32_t pixel_offset) {
+    fseek(file, pixel_offset, SEEK_SET);
+}
+
+void jump_to_pixel_data_offset_address(FILE *file) {
+    fseek(file, BMP_PIXEL_DATA_OFFSET_ADDRESS, SEEK_SET);
 }
