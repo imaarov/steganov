@@ -115,6 +115,7 @@ make run-test
 - [ ] Implement hashing for LZ77 find match function to improve the performance
 - [ ] Add Bitstream for encoding/decoding
 - [ ] Create deflate module for connecting Huffman/LZ77/Bitstream together to make the final DEFLATE pipeline
+- [ ] Add custom print function for this project
 - [ ] Implement Knuth Morris Pratt algorithm
 - [ ] Implement Min heap priority for huffman algorithm
 - [ ] Come up with another algorithm besides LSB
