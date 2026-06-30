@@ -2,8 +2,8 @@
 #define HUFFMAN_H
 
 #include "deflate.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define DEFLATE_LITERAL_LENGTH_SIZE 286
 #define DEFLATE_DISTANCE_SIZE       30

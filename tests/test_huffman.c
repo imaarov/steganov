@@ -1,6 +1,6 @@
-#include "../include/lz77.h"
 #include "../include/deflate.h"
 #include "../include/huffman.h"
+#include "../include/lz77.h"
 #include <assert.h>
 #include <bits/time.h>
 #include <stdint.h>
@@ -9,12 +9,11 @@
 #include <string.h>
 #include <time.h>
 
-
 void test_huffman_code_table() {
     unsigned char *data = malloc(33000);
 
     memset(data, 'A', 33000);
-    //uint16_t data_len = strlen(data);
+    // uint16_t data_len = strlen(data);
     struct timespec start;
     struct timespec end;
 
@@ -35,7 +34,6 @@ void test_huffman_code_table() {
 
     printf("print lz77 tokens\n");
     print_lz77_tokens(stream, stream->size);
-
 
     clock_gettime(CLOCK_MONOTONIC, &start);
     deflate_stream_t *deflate = deflate_encode(stream);

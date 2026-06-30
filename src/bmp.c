@@ -126,9 +126,7 @@ bool header_signature_is_not_standard(const Byte header[BMP_HEADER_SIZE]) {
     return false;
 }
 
-void jump_to_pixel_data(FILE *file, uint32_t pixel_offset) {
-    fseek(file, pixel_offset, SEEK_SET);
-}
+void jump_to_pixel_data(FILE *file, uint32_t pixel_offset) { fseek(file, pixel_offset, SEEK_SET); }
 
 void jump_to_pixel_data_offset_address(FILE *file) {
     fseek(file, BMP_PIXEL_DATA_OFFSET_ADDRESS, SEEK_SET);

@@ -151,6 +151,4 @@ void print_lz77_tokens(lz_tokens_stream_t *stream, uint32_t tokens_size) {
 
 static void free_lz77_tokens(lz_token_t *tokens) { free(tokens); }
 
-void free_lz77(lz_tokens_stream_t *token_stream) {
-    free(token_stream);
-}
+void free_lz77(lz_tokens_stream_t *token_stream) { free(token_stream); }

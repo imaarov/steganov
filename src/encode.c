@@ -69,12 +69,11 @@ void embed_secret_byte_in_file(FILE *file, const Byte secret_byte) {
     }
 }
 
-void embed_secret_in_file(FILE *file, uint32_t message_length,const char *message) {
+void embed_secret_in_file(FILE *file, uint32_t message_length, const char *message) {
     for (uint32_t i = 0; i < message_length; i++) {
         embed_secret_byte_in_file(file, message[i]);
     }
 }
-
 
 void embed_secret_size_in_file(FILE *file, uint32_t message_length) {
     for (int32_t i = BMP_STEG_HEADER_SIZE - 1; i >= 0; i--) {

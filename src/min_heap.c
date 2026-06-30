@@ -1,8 +1,8 @@
 #include "../include/min_heap.h"
 #include "../include/utils.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 min_heap_t *min_heap_create(uint32_t capacity) {
     if (0 == capacity) {

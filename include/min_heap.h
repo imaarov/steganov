@@ -2,8 +2,8 @@
 #define MIN_HEAP_H
 
 #include "huffman.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct {
     uint32_t capacity;

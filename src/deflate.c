@@ -72,16 +72,16 @@ void print_deflate(const deflate_stream_t *deflate_stream) {
     for (uint16_t i = 0; i < deflate_stream->size; i++) {
         if (deflate_stream->tokens[i].type == LITERAL) {
             printf("[LITERAL] : %u\n", deflate_stream->tokens[i].literal);
-        }else if (deflate_stream->tokens[i].type == MATCH) {
-            printf("[MATCH] len symbol: %u,, len extra val: %u, len extra count: %u, distance symbol: %u, distance extra value: %u, distance_extra count: %u\n", 
-                    deflate_stream->tokens[i].length_symbol,
-                    deflate_stream->tokens[i].length_extra_value,
-                    deflate_stream->tokens[i].length_extra_count,
-                    deflate_stream->tokens[i].distance_symbol,
-                    deflate_stream->tokens[i].distance_extra_value,
-                    deflate_stream->tokens[i].distance_extra_count
-                    );
-        }else if (deflate_stream->tokens[i].type == EOB_TOKEN) {
+        } else if (deflate_stream->tokens[i].type == MATCH) {
+            printf("[MATCH] len symbol: %u,, len extra val: %u, len extra count: %u, distance "
+                   "symbol: %u, distance extra value: %u, distance_extra count: %u\n",
+                   deflate_stream->tokens[i].length_symbol,
+                   deflate_stream->tokens[i].length_extra_value,
+                   deflate_stream->tokens[i].length_extra_count,
+                   deflate_stream->tokens[i].distance_symbol,
+                   deflate_stream->tokens[i].distance_extra_value,
+                   deflate_stream->tokens[i].distance_extra_count);
+        } else if (deflate_stream->tokens[i].type == EOB_TOKEN) {
             printf("[EOB]: %u\n", deflate_stream->tokens[i].literal);
         }
     }

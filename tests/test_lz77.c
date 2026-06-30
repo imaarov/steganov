@@ -5,12 +5,11 @@
 #include <string.h>
 
 void test_lz77_token_stream() {
-    char *data = "aaaabbbccd";
+    char *data       = "aaaabbbccd";
     uint8_t data_len = strlen(data);
     printf("print lz77 tokens\n");
     lz_tokens_stream_t *stream = lz_77_encode((Byte *)data, data_len);
     print_lz77_tokens(stream, stream->size);
-
 
     assert(stream != NULL);
     assert(stream->size == 9);
