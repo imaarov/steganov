@@ -1,10 +1,12 @@
 cc=gcc
 CFLAGS= -DENABLE_DEBUG -O -Wall -Wextra -Iinclude
+CLANG_TIDY=clang-tidy
 
 TARGET=bin/steganov
 
 SRC=$(wildcard src/*.c)
 OBJS=$(SRC:src/%.c=build/%.o)
+TIDY_FILES=$(SRC) $(TESTSRC)
 
 TESTSRC=$(wildcard tests/*.c)
 TEST_OBJS=$(TESTSRC:tests/%.c=build/tests/%.o)
@@ -35,6 +37,11 @@ run-test: test
 clean:
 	rm -rf build bin/steganov bin/test_runner
 
+tidy:
+	$(CLANG_TIDY) -p . -config-file=.clang-tidy $(TIDY_FILES)
+
+tidy-strict:
+	$(CLANG_TIDY) -p . -config-file=.strict-clang-tidy $(TIDY_FILES)
 
 .PHONY: format test clean all
 format:

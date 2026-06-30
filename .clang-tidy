@@ -1,0 +1,9 @@
+Checks: >
+  -*,
+  bugprone-narrowing-conversions,
+  clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  readability-magic-numbers,
+  readability-function-cognitive-complexity
+WarningsAsErrors: ''
+HeaderFilterRegex: '^(include|src|tests)/'
+
