@@ -11,8 +11,11 @@
 #define DEBUG(msg, ...)
 #define FATAL(msg, ...)
 #endif
-#define MAX_FILE_NAME_LEN      255
-#define MAX_SECRET_MESSAGE_LEN 255
+#define MAX_FILE_NAME_LEN                255
+#define MAX_SECRET_MESSAGE_LEN           255
+#define BYTES_NEEDED_FOR_ONE_SECRET_BYTE 8
+#define BITS_PER_BYTE                    8
+#define LSB_MASK                         0xFE
 
 typedef enum { ENCODE = 1, DECODE = 2, EXIT = 3 } Operation;
 

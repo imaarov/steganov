@@ -2,6 +2,9 @@
 #include "../include/bmp.h"
 #include "../include/png.h"
 #include "../include/wav.h"
+#include "utils.h"
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,4 +56,25 @@ bool encode(char *fileName, char *secretMessage) {
 
     fclose(file);
     return true;
+}
+
+void embed_secret_byte_in_file(FILE *file, const Byte secret_byte) {
+    for (int b = BITS_PER_BYTE - 1; b >= 0; b--) {
+        Byte file_byte  = fgetc(file);
+        Byte messageLSB = (secret_byte >> b) & 1;
+        file_byte       = (file_byte & LSB_MASK) | messageLSB;
+
+        fseek(file, -1, SEEK_CUR);
+        fputc(file_byte, file);
+    }
+}
+
+void embed_secret_size_in_file(FILE *file, uint32_t message_length) {
+    for (int32_t i = BMP_STEG_HEADER_SIZE - 1; i >= 0; i--) {
+        Byte c = fgetc(file);
+        c      = (c & LSB_MASK) | ((message_length >> i) & 1);
+
+        fseek(file, -1, SEEK_CUR);
+        fputc(c, file);
+    }
 }

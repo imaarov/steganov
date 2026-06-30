@@ -3,6 +3,7 @@
 #include "../include/png.h"
 #include "../include/utils.h"
 #include "../include/wav.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -50,4 +51,35 @@ char *decode(char *fileName) {
     DEBUG("INFO: Successful decoding operation\n");
     fclose(file);
     return message;
+}
+
+Byte extract_secret_byte_from_file(FILE *file) {
+    Byte secret_byte = 0;
+    for (int bit = BITS_PER_BYTE - 1; bit >= 0; bit--) {
+        Byte c = fgetc(file);
+        c      = (c & 1) << bit;
+        secret_byte |= c;
+    }
+    return secret_byte;
+}
+
+void extract_secret_message_from_file(FILE *file, uint32_t secret_byte_size, char *secret) {
+    for (uint32_t i = 0; i < secret_byte_size; i++) {
+        secret[i] = (char)extract_secret_byte_from_file(file);
+    }
+}
+
+Byte extract_secret_message_length_from_file(FILE *file) {
+    uint32_t secret_byte_size = 0;
+    for (int16_t i = BMP_STEG_HEADER_SIZE - 1; i >= 0; i--) {
+        int ch = fgetc(file);
+        if (EOF == ch) {
+            FATAL("reached to the End Of File");
+            return 0;
+        }
+        Byte c = (Byte)ch;
+        c      = (c & 1) << i;
+        secret_byte_size |= c;
+    }
+    return secret_byte_size;
 }
