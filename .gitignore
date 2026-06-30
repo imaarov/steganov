@@ -1,9 +1,15 @@
+# Object/Binary files
 *.o
 build/*.o
 bin/*
+
+# Media formats
 *.bmp
 *.wav
 *.swp
 *.png
 src/*.swp
 include/*.swp
+
+# clang-tidy compile file
+compile_commands.json
