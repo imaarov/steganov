@@ -67,7 +67,7 @@ char *decodeBMP(FILE *file) {
     DEBUG("file pixel offset is %u", decimal_pixel_offset);
     jump_to_pixel_data(file, decimal_pixel_offset);
 
-    uint32_t secret_byte_size = secret_byte_size = extract_secret_message_length_from_file(file);
+    uint32_t secret_byte_size = extract_secret_message_length_from_file(file);
 
     DEBUG("the size of the message is : %u", secret_byte_size);
     char *message = malloc(sizeof(char) * secret_byte_size + 1);
