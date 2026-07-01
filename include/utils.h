@@ -11,6 +11,7 @@
 #define DEBUG(msg, ...)
 #define FATAL(msg, ...)
 #endif
+
 #define MAX_FILE_NAME_LEN                255
 #define MAX_SECRET_MESSAGE_LEN           255
 #define BYTES_NEEDED_FOR_ONE_SECRET_BYTE 8
