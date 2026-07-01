@@ -6,10 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static match_t find_match(Byte *data, uint32_t data_len, uint32_t pointer);
+static match_t find_match(byte *data, uint32_t data_len, uint32_t pointer);
 static void free_lz77_tokens(lz_token_t *tokens);
 
-lz_tokens_stream_t *lz_77_encode(Byte *data, uint32_t data_len) {
+lz_tokens_stream_t *lz_77_encode(byte *data, uint32_t data_len) {
     if (NULL == data) {
         FATAL("data passed to the lz_77_encode is NULL");
         return NULL;
@@ -64,12 +64,12 @@ lz_tokens_stream_t *lz_77_encode(Byte *data, uint32_t data_len) {
     return tokens_stream;
 }
 
-Byte *lz_77_decode(const lz_tokens_stream_t *lz77_stream) {
+byte *lz_77_decode(const lz_tokens_stream_t *lz77_stream) {
     if (NULL == lz77_stream) {
         FATAL("lz77 token stream is NULL for decoding");
     }
-    uint32_t allocated_size = lz77_stream->size; // initial size
-    Byte *decoded_data      = malloc(sizeof(Byte) * allocated_size);
+    uint32_t allocated_size = lz77_stream->size;
+    byte *decoded_data      = malloc(sizeof(byte) * allocated_size);
     for (uint32_t data_index = 0, lz_index = 0; lz_index < lz77_stream->size;
          lz_index++, data_index++) {
         if (lz77_stream->tokens[lz_index].type == LITERAL) {
@@ -81,9 +81,9 @@ Byte *lz_77_decode(const lz_tokens_stream_t *lz77_stream) {
                 return NULL;
             }
             if (data_index + lz77_stream->tokens[lz_index].length > allocated_size) {
-                Byte *temp =
+                byte *temp =
                     realloc(decoded_data,
-                            allocated_size + (sizeof(Byte) * lz77_stream->tokens[lz_index].length));
+                            allocated_size + (sizeof(byte) * lz77_stream->tokens[lz_index].length));
                 if (NULL == temp) {
                     FATAL("failed to reallocate memory for decoding lz77 tokens");
                     return decoded_data;
@@ -105,7 +105,7 @@ Byte *lz_77_decode(const lz_tokens_stream_t *lz77_stream) {
     return decoded_data;
 }
 
-static match_t find_match(Byte *data, uint32_t data_len, uint32_t pointer) {
+static match_t find_match(byte *data, uint32_t data_len, uint32_t pointer) {
     uint32_t search_buffer_index_start =
         pointer < SEARCH_BUFFER_SIZE ? 0 : pointer - SEARCH_BUFFER_SIZE;
     uint32_t longest_match_len   = 0;

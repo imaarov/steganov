@@ -28,22 +28,22 @@
 #define WAV_CHUNK_ID_DATA               "data"
 
 typedef struct {
-    Byte signature[WAV_HEADER_SIZE];
-    Byte size[WAV_FILE_SIZE_FIELD_SIZE];
-    Byte format[WAV_FORMAT_FIELD_SIZE];
+    byte signature[WAV_HEADER_SIZE];
+    byte size[WAV_FILE_SIZE_FIELD_SIZE];
+    byte format[WAV_FORMAT_FIELD_SIZE];
 } WAV_Header;
 
 typedef struct {
-    Byte size[WAV_CHUNK_SIZE_FIELD_SIZE];
-    Byte audioFormat[WAV_FMT_AUDIO_FORMAT_SIZE];
-    Byte numChannels[WAV_FMT_NUM_CHANNELS_SIZE];
-    Byte sampleRate[WAV_FMT_SAMPLE_RATE_SIZE];
-    Byte byteRate[WAV_FMT_BYTE_RATE_SIZE];
-    Byte blockAlign[WAV_FMT_BLOCK_ALIGN_SIZE];
-    Byte bitsPerSample[WAV_FMT_BITS_PER_SAMPLE_SIZE];
+    byte size[WAV_CHUNK_SIZE_FIELD_SIZE];
+    byte audioFormat[WAV_FMT_AUDIO_FORMAT_SIZE];
+    byte numChannels[WAV_FMT_NUM_CHANNELS_SIZE];
+    byte sampleRate[WAV_FMT_SAMPLE_RATE_SIZE];
+    byte byteRate[WAV_FMT_BYTE_RATE_SIZE];
+    byte blockAlign[WAV_FMT_BLOCK_ALIGN_SIZE];
+    byte bitsPerSample[WAV_FMT_BITS_PER_SAMPLE_SIZE];
 } WAV_FMT;
 
-bool encodeWAV(FILE *file, const char *secretMessage);
-char *decodeWAV(FILE *file);
+bool encode_wav(FILE *file, const char *secretMessage);
+char *decode_wav(FILE *file);
 
 #endif

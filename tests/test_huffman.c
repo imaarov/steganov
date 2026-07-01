@@ -18,7 +18,7 @@ void test_huffman_code_table() {
     struct timespec end;
 
     clock_gettime(CLOCK_MONOTONIC, &start);
-    lz_tokens_stream_t *stream = lz_77_encode((Byte *)data, 33000);
+    lz_tokens_stream_t *stream = lz_77_encode((byte *)data, 33000);
     clock_gettime(CLOCK_MONOTONIC, &end);
     double timespent = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
     printf("lz 77 elapsed: %.9f sec\n", timespent);

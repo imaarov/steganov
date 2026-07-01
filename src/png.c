@@ -6,88 +6,88 @@
 #include <stdio.h>
 #include <string.h>
 
-bool verifyPNGHeaderSignature(FILE *file);
-bool readIHDRChunk(FILE *file);
-uint32_t getFirstIDATChunkSize(FILE *file);
+static bool png_header_is_not_valid(FILE *file);
+static bool read_ihdr_chunk(FILE *file);
+static uint32_t get_first_idat_chunk_size(FILE *file);
 
-bool encodePNG(FILE *file, char *secretMessage) {
+bool encode_png(FILE *file, char *secretMessage) {
     (void)secretMessage; // TODO silence unused warning
-    if (!verifyPNGHeaderSignature(file)) {
+    if (png_header_is_not_valid(file)) {
         return false;
     }
-    if (!readIHDRChunk(file)) {
+    if (!read_ihdr_chunk(file)) {
         return false;
     }
-    uint32_t idatSize = getFirstIDATChunkSize(file);
-    if (0 == idatSize) {
+    uint32_t idat_size = get_first_idat_chunk_size(file);
+    if (0 == idat_size) {
         return false;
     }
 
     return false;
 }
 
-char *decodePNG(FILE *file) {
+char *decode_png(FILE *file) {
     (void)file;
     return NULL;
 }
 
-bool verifyPNGHeaderSignature(FILE *file) {
+bool png_header_is_not_valid(FILE *file) {
     DEBUG("Header information: ");
-    Byte headerA[PNG_HEADER_SIZE / 2];
-    if (fread(headerA, sizeof(Byte), PNG_HEADER_SIZE / 2, file) != PNG_HEADER_SIZE / 2) {
+    byte headerA[PNG_HEADER_SIZE / 2];
+    if (fread(headerA, sizeof(byte), PNG_HEADER_SIZE / 2, file) != PNG_HEADER_SIZE / 2) {
         FATAL("failed to read the PNG header section");
-        return false;
+        return true;
     }
-    Byte headerB[PNG_HEADER_SIZE / 2];
-    if (fread(headerB, sizeof(Byte), PNG_HEADER_SIZE / 2, file) != PNG_HEADER_SIZE / 2) {
+    byte headerB[PNG_HEADER_SIZE / 2];
+    if (fread(headerB, sizeof(byte), PNG_HEADER_SIZE / 2, file) != PNG_HEADER_SIZE / 2) {
         FATAL("failed to read the PNG header section");
-        return false;
+        return true;
     }
-    unsigned int signA = hexaToDecimal(headerA, PNG_HEADER_SIZE / 2);
-    unsigned int signB = hexaToDecimal(headerB, PNG_HEADER_SIZE / 2);
+    unsigned int signA = hexa_to_decimal(LITTLE_ENDIAN, headerA, PNG_HEADER_SIZE / 2);
+    unsigned int signB = hexa_to_decimal(LITTLE_ENDIAN, headerB, PNG_HEADER_SIZE / 2);
     DEBUG("signature first 4 byte : %x", signA);
     DEBUG("signature second 4 byte : %x", signB);
     if (PNG_HEADER_SIGNATURE_A == signA && PNG_HEADER_SIGNATURE_B == signB) {
         DEBUG("png file signature is standard");
-        return true;
+        return false;
     }
     FATAL("png file signature is NOT standard");
-    return false;
+    return true;
 }
 
-bool readIHDRChunk(FILE *file) {
-    PNGIHDRHeader ihdrHeader;
-    if (fread(&ihdrHeader, sizeof(PNGIHDRHeader) - sizeof(ihdrHeader.gap_pad), 1, file) != 1) {
+bool read_ihdr_chunk(FILE *file) {
+    PNGIHDRHeader ihdr_header;
+    if (fread(&ihdr_header, sizeof(PNGIHDRHeader) - sizeof(ihdr_header.gap_pad), 1, file) != 1) {
         FATAL("failed to read the IHDR header");
         return false;
     }
-    uint32_t ihdrSize = hexaToDecimalBigEndian(ihdrHeader.size, PNG_LENGTH_FIELD_SIZE);
-    uint32_t width    = hexaToDecimalBigEndian(ihdrHeader.width, PNG_IHDR_WIDTH_FIELD_SIZE);
-    uint32_t height   = hexaToDecimalBigEndian(ihdrHeader.height, PNG_IHDR_HEIGHT_FIELD_SIZE);
-    DEBUG("IHDR chunk size: %d", ihdrSize);
-    DEBUG("IHDR ID: %.4s", (char *)ihdrHeader.ID);
+    uint32_t ihdr_size = hexa_to_decimal(BIG_ENDIAN, ihdr_header.size, PNG_LENGTH_FIELD_SIZE);
+    uint32_t width     = hexa_to_decimal(BIG_ENDIAN, ihdr_header.width, PNG_IHDR_WIDTH_FIELD_SIZE);
+    uint32_t height = hexa_to_decimal(BIG_ENDIAN, ihdr_header.height, PNG_IHDR_HEIGHT_FIELD_SIZE);
+    DEBUG("IHDR chunk size: %d", ihdr_size);
+    DEBUG("IHDR ID: %.4s", (char *)ihdr_header.ID);
     DEBUG("IHDR width: %d", width);
     DEBUG("IHDR height: %d", height);
-    DEBUG("IHDR color type : %d", ihdrHeader.colorType);
-    DEBUG("IHDR compression type: %d", ihdrHeader.compressionType);
-    DEBUG("IHDR filter type: %d", ihdrHeader.filterType);
-    DEBUG("IHDR interlace method: %d", ihdrHeader.interlaceMethod);
+    DEBUG("IHDR color type : %d", ihdr_header.colorType);
+    DEBUG("IHDR compression type: %d", ihdr_header.compressionType);
+    DEBUG("IHDR filter type: %d", ihdr_header.filterType);
+    DEBUG("IHDR interlace method: %d", ihdr_header.interlaceMethod);
     // CRC include both chuck data section + chunk type section
-    uint32_t crcDataSize = ihdrSize + PNG_CHUNK_ID_SIZE;
-    Byte *data           = (Byte *)&ihdrHeader;
+    uint32_t crc_data_size = ihdr_size + PNG_CHUNK_ID_SIZE;
+    byte *data             = (byte *)&ihdr_header;
     data         = data + PNG_LENGTH_FIELD_SIZE; // crc exclude the size field, so i skip that
-    uint32_t crc = crc32_calculate(data, crcDataSize);
+    uint32_t crc = crc32_calculate(data, crc_data_size);
     DEBUG("the CRC of the IHDR (Calculated by built in CRC Checksum "
           "calculator)is : 0x%04x",
           crc);
-    Byte IHDRCrc[PNG_CRC_FIELD_SIZE];
-    if (fread(IHDRCrc, sizeof(Byte), PNG_CRC_FIELD_SIZE, file) != PNG_CRC_FIELD_SIZE) {
+    byte ihdr_crc[PNG_CRC_FIELD_SIZE];
+    if (fread(ihdr_crc, sizeof(byte), PNG_CRC_FIELD_SIZE, file) != PNG_CRC_FIELD_SIZE) {
         FATAL("failed to read the CRC Checksum of IHDR chunk");
         return false;
     }
-    uint32_t decimalIHDRCRC = hexaToDecimalBigEndian(IHDRCrc, PNG_CRC_FIELD_SIZE);
-    DEBUG("the actual file CRC Checksum of IHDR : 0x%04x", decimalIHDRCRC);
-    if (decimalIHDRCRC != crc) {
+    uint32_t decimal_ihdr_crc = hexa_to_decimal(BIG_ENDIAN, ihdr_crc, PNG_CRC_FIELD_SIZE);
+    DEBUG("the actual file CRC Checksum of IHDR : 0x%04x", decimal_ihdr_crc);
+    if (decimal_ihdr_crc != crc) {
         FATAL("Calculated CRC checksum is not the same as the actual CRC in "
               "the png");
         return false;
@@ -96,27 +96,27 @@ bool readIHDRChunk(FILE *file) {
     return true;
 }
 
-uint32_t getFirstIDATChunkSize(FILE *file) {
+uint32_t get_first_idat_chunk_size(FILE *file) {
     printf("\n");
     while (1) {
-        Byte chunkSize[PNG_LENGTH_FIELD_SIZE];
-        if (fread(chunkSize, sizeof(Byte), PNG_LENGTH_FIELD_SIZE, file) != PNG_LENGTH_FIELD_SIZE) {
+        byte chunk_size[PNG_LENGTH_FIELD_SIZE];
+        if (fread(chunk_size, sizeof(byte), PNG_LENGTH_FIELD_SIZE, file) != PNG_LENGTH_FIELD_SIZE) {
             FATAL("can not read the chunk size");
             return 0;
         }
-        Byte chunkId[PNG_CHUNK_ID_SIZE];
-        if (fread(chunkId, sizeof(Byte), PNG_LENGTH_FIELD_SIZE, file) != PNG_LENGTH_FIELD_SIZE) {
+        byte chunk_id[PNG_CHUNK_ID_SIZE];
+        if (fread(chunk_id, sizeof(byte), PNG_LENGTH_FIELD_SIZE, file) != PNG_LENGTH_FIELD_SIZE) {
             FATAL("can not read the chunk id");
             return 0;
         }
-        uint32_t size = hexaToDecimalBigEndian(chunkSize, PNG_LENGTH_FIELD_SIZE);
-        DEBUG("chunk id found : %.4s, skipping : %u bytes", chunkId, size);
-        if (0 == strcmp(PNG_IDAT_CHUNK_ID, (char *)chunkId)) {
+        uint32_t size = hexa_to_decimal(BIG_ENDIAN, chunk_size, PNG_LENGTH_FIELD_SIZE);
+        DEBUG("chunk id found : %.4s, skipping : %u bytes", chunk_id, size);
+        if (0 == strcmp(PNG_IDAT_CHUNK_ID, (char *)chunk_id)) {
             fseek(file, PNG_CHUNK_ID_SIZE + PNG_LENGTH_FIELD_SIZE, SEEK_CUR);
             DEBUG("found the IDAT chunk, exit the finding process");
             return size;
         }
-        if (0 == strcmp(PNG_IEND_CHUNK_ID, (char *)chunkId)) {
+        if (0 == strcmp(PNG_IEND_CHUNK_ID, (char *)chunk_id)) {
             DEBUG("reached the final IEND chunk, IDAT nout found! possible "
                   "corrupted file");
             return 0;

@@ -7,23 +7,23 @@
 #include <stdio.h>
 #include <string.h>
 
-char *decode(char *fileName) {
-    fileName = getFileName();
-    if (fileName == NULL) {
+char *decode(const char *file_name) {
+    file_name = get_file_name();
+    if (file_name == NULL) {
         FATAL("file name should not be empty");
         return NULL;
     }
-    const char *fileExt = getFileExtension(fileName);
-    if (fileExt == NULL) {
+    const char *file_ext = get_file_extension(file_name);
+    if (file_ext == NULL) {
         FATAL("there is no file extension /:\n");
         return NULL;
     }
-    SupportedExtension ext = getSupportedExtEnum(fileExt);
+    SupportedExtension ext = get_supported_ext(file_ext);
     if (ext == UNDEFINED) {
         FATAL("file extension is not supported\n");
         return NULL;
     }
-    FILE *file = fopen(fileName, "rb+");
+    FILE *file = fopen(file_name, "rb+");
     if (file == NULL) {
         FATAL("file can't open the file\n");
         return NULL;
@@ -31,13 +31,13 @@ char *decode(char *fileName) {
     char *message = NULL;
     switch (ext) {
     case BMP:
-        message = decodeBMP(file);
+        message = decode_bmp(file);
         break;
     case WAV:
-        message = decodeWAV(file);
+        message = decode_wav(file);
         break;
     case PNG:
-        message = decodePNG(file);
+        message = decode_png(file);
         break;
     case UNDEFINED:
         fclose(file);
@@ -53,23 +53,23 @@ char *decode(char *fileName) {
     return message;
 }
 
-Byte extract_secret_byte_from_file(FILE *file) {
-    Byte secret_byte = 0;
+byte extract_secret_byte_from_file(FILE *file) {
+    byte secret_byte = 0;
     for (int bit = BITS_PER_BYTE - 1; bit >= 0; bit--) {
-        Byte c = fgetc(file);
+        byte c = fgetc(file);
         c      = (c & 1) << bit;
         secret_byte |= c;
     }
     return secret_byte;
 }
 
-void extract_secret_message_from_file(FILE *file, uint32_t secret_byte_size, char *secret) {
+void extract_secret_message_from_file(FILE *file, const uint32_t secret_byte_size, char *secret) {
     for (uint32_t i = 0; i < secret_byte_size; i++) {
         secret[i] = (char)extract_secret_byte_from_file(file);
     }
 }
 
-Byte extract_secret_message_length_from_file(FILE *file) {
+byte extract_secret_message_length_from_file(FILE *file) {
     uint32_t secret_byte_size = 0;
     for (int16_t i = BMP_STEG_HEADER_SIZE - 1; i >= 0; i--) {
         int ch = fgetc(file);
@@ -77,7 +77,7 @@ Byte extract_secret_message_length_from_file(FILE *file) {
             FATAL("reached to the End Of File");
             return 0;
         }
-        Byte c = (Byte)ch;
+        byte c = (byte)ch;
         c      = (c & 1) << i;
         secret_byte_size |= c;
     }

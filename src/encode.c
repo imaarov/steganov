@@ -9,43 +9,43 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool encode(char *fileName, char *secretMessage) {
-    fileName      = getFileName();
-    secretMessage = getSecret();
-    if (fileName == NULL || secretMessage == NULL) {
-        free(fileName);
-        free(secretMessage);
+bool encode(char *file_name, char *secret_message) {
+    file_name      = get_file_name();
+    secret_message = get_secret();
+    if (file_name == NULL || secret_message == NULL) {
+        free(file_name);
+        free(secret_message);
         printf("WARNING: file name or secret message should not be empty\n");
         return false;
     }
-    const char *fileExt = getFileExtension(fileName);
-    if (fileExt == NULL) {
+    const char *file_ext = get_file_extension(file_name);
+    if (file_ext == NULL) {
         FATAL("there is no file extension /:\n");
         return false;
     }
-    SupportedExtension ext = getSupportedExtEnum(fileExt);
+    SupportedExtension ext = get_supported_ext(file_ext);
     DEBUG("supported is : %d\n", ext);
     if (ext == UNDEFINED) {
         FATAL("File type is not supported\n");
         return false;
     }
-    FILE *file = fopen(fileName, "rb+");
+    FILE *file = fopen(file_name, "rb+");
     if (file == NULL) {
-        FATAL("failed to open the file named: %s\n", fileName);
+        FATAL("failed to open the file named: %s\n", file_name);
         return false;
     }
     bool status = false;
     switch (ext) {
     case BMP:
-        status = encodeBMP(file, secretMessage);
+        status = encode_bmp(file, secret_message);
         break;
     case WAV:
-        status = encodeWAV(file, secretMessage);
+        status = encode_wav(file, secret_message);
         break;
     case PNG:
-        status = encodePNG(file, secretMessage);
+        status = encode_png(file, secret_message);
         break;
-    case UNDEFINED: // unnecessary
+    case UNDEFINED: // ik, its unnecessary
         return false;
     }
     if (!status) {
@@ -58,11 +58,11 @@ bool encode(char *fileName, char *secretMessage) {
     return true;
 }
 
-void embed_secret_byte_in_file(FILE *file, const Byte secret_byte) {
+void embed_secret_byte_in_file(FILE *file, const byte secret_byte) {
     for (int b = BITS_PER_BYTE - 1; b >= 0; b--) {
-        Byte file_byte  = fgetc(file);
-        Byte messageLSB = (secret_byte >> b) & 1;
-        file_byte       = (file_byte & LSB_MASK) | messageLSB;
+        byte file_byte   = fgetc(file);
+        byte message_lsb = (secret_byte >> b) & 1;
+        file_byte        = (file_byte & LSB_MASK) | message_lsb;
 
         fseek(file, -1, SEEK_CUR);
         fputc(file_byte, file);
@@ -77,7 +77,7 @@ void embed_secret_in_file(FILE *file, uint32_t message_length, const char *messa
 
 void embed_secret_size_in_file(FILE *file, uint32_t message_length) {
     for (int32_t i = BMP_STEG_HEADER_SIZE - 1; i >= 0; i--) {
-        Byte c = fgetc(file);
+        byte c = fgetc(file);
         c      = (c & LSB_MASK) | ((message_length >> i) & 1);
 
         fseek(file, -1, SEEK_CUR);

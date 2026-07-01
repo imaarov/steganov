@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #define PNG_HEADER_SIZE            8
+#define PNG_HEADER_SIGNATURE       0x474E50890A1A0A0D
 #define PNG_HEADER_SIGNATURE_A     0x474E5089
 #define PNG_HEADER_SIGNATURE_B     0x0A1A0A0D
 #define PNG_CHUNK_ID_SIZE          4
@@ -18,19 +19,19 @@
 #define PNG_CRC_FIELD_SIZE         4
 
 typedef struct {
-    Byte size[PNG_LENGTH_FIELD_SIZE];
-    Byte ID[PNG_CHUNK_ID_SIZE];
-    Byte width[PNG_IHDR_WIDTH_FIELD_SIZE];
-    Byte height[PNG_IHDR_HEIGHT_FIELD_SIZE];
-    Byte bitDepth;
-    Byte colorType;
-    Byte compressionType;
-    Byte filterType;
-    Byte interlaceMethod;
-    Byte gap_pad[3];
+    byte size[PNG_LENGTH_FIELD_SIZE];
+    byte ID[PNG_CHUNK_ID_SIZE];
+    byte width[PNG_IHDR_WIDTH_FIELD_SIZE];
+    byte height[PNG_IHDR_HEIGHT_FIELD_SIZE];
+    byte bitDepth;
+    byte colorType;
+    byte compressionType;
+    byte filterType;
+    byte interlaceMethod;
+    byte gap_pad[3];
 } PNGIHDRHeader;
 
-bool encodePNG(FILE *file, char *secretMessage);
-char *decodePNG(FILE *file);
+bool encode_png(FILE *file, char *secretMessage);
+char *decode_png(FILE *file);
 
 #endif

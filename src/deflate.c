@@ -1,5 +1,6 @@
 #include "../include/deflate.h"
 #include "../include/lz77.h"
+#include "utils.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,10 @@ deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream) {
         return NULL;
     }
 
+    if ((sizeof(deflate_token_t) * token_stream->size) > SIZE_MAX) {
+        FATAL("overflow for allcoation");
+        return NULL;
+    }
     deflate_token_t *deflate = malloc(sizeof(deflate_token_t) * token_stream->size);
     if (NULL == deflate) {
         FATAL("cannot allocate memory for deflate tokens");

@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool header_signature_is_invalid(const Byte header[BMP_HEADER_SIZE]);
-bool get_header(FILE *file, Byte header[BMP_HEADER_SIZE]);
+bool header_signature_is_invalid(const byte header[BMP_HEADER_SIZE]);
+bool get_header(FILE *file, byte header[BMP_HEADER_SIZE]);
 bool get_size(FILE *file, uint32_t *size);
 bool get_file_pixel_offset(FILE *file, uint32_t *offset);
 bool encode_bmp_stegano_secret_size(uint32_t message_length, uint32_t file_size,
@@ -17,8 +17,8 @@ bool encode_bmp_stegano_secret_size(uint32_t message_length, uint32_t file_size,
 void jump_to_pixel_data(FILE *file, uint32_t pixel_offset);
 void jump_to_pixel_data_offset_address(FILE *file);
 
-bool encodeBMP(FILE *file, const char *secret_message) {
-    Byte header[BMP_HEADER_SIZE];
+bool encode_bmp(FILE *file, const char *secret_message) {
+    byte header[BMP_HEADER_SIZE];
     if (!get_header(file, header)) {
         return false;
     }
@@ -49,7 +49,7 @@ bool encodeBMP(FILE *file, const char *secret_message) {
         FATAL("file size corrupted");
         return false;
     }
-    if (ableToEncode(available_file_size, message_length * BYTES_NEEDED_FOR_ONE_SECRET_BYTE)) {
+    if (able_to_encode(available_file_size, message_length * BYTES_NEEDED_FOR_ONE_SECRET_BYTE)) {
         embed_secret_in_file(file, message_length, secret_message);
     } else {
         FATAL("its not possible to store message data in the file because of "
@@ -61,7 +61,7 @@ bool encodeBMP(FILE *file, const char *secret_message) {
     return true;
 }
 
-char *decodeBMP(FILE *file) {
+char *decode_bmp(FILE *file) {
     uint32_t pixel_offset = 0;
     if (!get_file_pixel_offset(file, &pixel_offset)) {
         return NULL;
@@ -89,13 +89,14 @@ char *decodeBMP(FILE *file) {
 
 bool get_file_pixel_offset(FILE *file, uint32_t *pixel_offset_out) {
     jump_to_pixel_data_offset_address(file);
-    Byte pixel_offset_bytes[BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE];
-    if (fread(pixel_offset_bytes, sizeof(Byte), BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE, file) !=
+    byte pixel_offset_bytes[BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE];
+    if (fread(pixel_offset_bytes, sizeof(byte), BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE, file) !=
         BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE) {
         FATAL("failed to read the pixel offset");
         return false;
     }
-    *pixel_offset_out = hexaToDecimal(pixel_offset_bytes, BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
+    *pixel_offset_out =
+        hexa_to_decimal(LITTLE_ENDIAN, pixel_offset_bytes, BMP_PIXEL_DATA_ADDRESS_FIELD_SIZE);
 
     return true;
 }
@@ -106,7 +107,7 @@ bool encode_bmp_stegano_secret_size(uint32_t message_length, uint32_t file_size,
         FATAL("message length can cause overflow");
         return false;
     }
-    if (ableToEncode(file_size - pixel_offset, message_length * BITS_PER_BYTE)) {
+    if (able_to_encode(file_size - pixel_offset, message_length * BITS_PER_BYTE)) {
         embed_secret_size_in_file(file, message_length);
     } else {
         FATAL("failed to encode file size, message size exceeds file capacity");
@@ -114,8 +115,8 @@ bool encode_bmp_stegano_secret_size(uint32_t message_length, uint32_t file_size,
     }
     return true;
 }
-bool get_header(FILE *file, Byte header[BMP_HEADER_SIZE]) {
-    if (fread(header, sizeof(Byte), BMP_HEADER_SIZE, file) != BMP_HEADER_SIZE) {
+bool get_header(FILE *file, byte header[BMP_HEADER_SIZE]) {
+    if (fread(header, sizeof(byte), BMP_HEADER_SIZE, file) != BMP_HEADER_SIZE) {
         FATAL("failed to read the header from file");
         return false;
     }
@@ -123,16 +124,16 @@ bool get_header(FILE *file, Byte header[BMP_HEADER_SIZE]) {
 }
 
 bool get_size(FILE *file, uint32_t *file_size) {
-    Byte size[BMP_FILE_SIZE_FIELD_SIZE];
-    if (fread(size, sizeof(Byte), BMP_FILE_SIZE_FIELD_SIZE, file) != BMP_FILE_SIZE_FIELD_SIZE) {
+    byte size[BMP_FILE_SIZE_FIELD_SIZE];
+    if (fread(size, sizeof(byte), BMP_FILE_SIZE_FIELD_SIZE, file) != BMP_FILE_SIZE_FIELD_SIZE) {
         FATAL("failed to read file size from file");
         return false;
     }
-    *file_size = hexaToDecimal(size, BMP_FILE_SIZE_FIELD_SIZE);
+    *file_size = hexa_to_decimal(LITTLE_ENDIAN, size, BMP_FILE_SIZE_FIELD_SIZE);
     return true;
 }
 
-bool header_signature_is_invalid(const Byte header[BMP_HEADER_SIZE]) {
+bool header_signature_is_invalid(const byte header[BMP_HEADER_SIZE]) {
     DEBUG("check the file header signature");
     int signature = header[0] << BITS_PER_BYTE | header[1];
     if (signature != BMP_HEADER_SIGNATURE) {

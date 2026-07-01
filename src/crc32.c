@@ -1,29 +1,30 @@
 #include "../include/crc32.h"
+#include "utils.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/types.h>
 
-static u_int32_t table[256];
-static bool tableInit = false;
+static u_int32_t table[CRC32_TABLE_LEN];
+static bool table_init = false;
 static void init_crc32_table();
 
-u_int32_t crc32_calculate(const Byte *data, size_t size) {
+u_int32_t crc32_calculate(const byte *data, size_t size) {
     u_int32_t crc = CRC32_INIT;
     init_crc32_table();
     for (size_t i = 0; i < size; i++) {
-        Byte index = data[i] ^ (Byte)crc;
-        crc        = (crc >> 8) ^ table[index];
+        byte index = data[i] ^ (byte)crc;
+        crc        = (crc >> BITS_PER_BYTE) ^ table[index];
     }
 
     return crc ^ CRC32_XOROUT;
 }
 
 static void init_crc32_table() {
-    if (tableInit)
+    if (table_init)
         return;
-    for (u_int32_t i = 0; i < 256; i++) {
+    for (u_int32_t i = 0; i < CRC32_TABLE_LEN; i++) {
         u_int32_t current_byte = i;
-        for (size_t b = 0; b < 8; b++) {
+        for (size_t b = 0; b < BITS_PER_BYTE; b++) {
             if (0 != (current_byte & 1)) {
                 current_byte = (current_byte >> 1) ^ POLYNOMIAL;
             } else {
@@ -32,5 +33,5 @@ static void init_crc32_table() {
         }
         table[i] = current_byte;
     }
-    tableInit = true;
+    table_init = true;
 }

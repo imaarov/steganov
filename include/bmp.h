@@ -11,7 +11,7 @@
 #define BMP_STEG_HEADER_SIZE              32
 #define BMP_FILE_SIZE_FIELD_SIZE          4
 
-bool encodeBMP(FILE *file, const char *secret_message);
-char *decodeBMP(FILE *file);
+bool encode_bmp(FILE *file, const char *secret_message);
+char *decode_bmp(FILE *file);
 
 #endif

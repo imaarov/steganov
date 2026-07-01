@@ -32,8 +32,8 @@ void prompt(char **file_name, char **secret_message) {
             printf("ERROR: Failed to read user input from stdin\n");
             return;
         }
-        int userOption = (int)strtol(buffer, NULL, DEFAULT_USER_INPUT_NUMBER_BASE);
-        switch (userOption) {
+        int user_option = (int)strtol(buffer, NULL, DEFAULT_USER_INPUT_NUMBER_BASE);
+        switch (user_option) {
         case ENCODE:
             if (encode(*file_name, *secret_message)) {
                 printf("INFO: successful encoding\n");
