@@ -27,4 +27,5 @@ void test_deflated_lz77_token_stream() {
     free_lz77(stream);
     printf("print deflated tokens\n");
     print_deflate(deflate);
+    free_deflate_stream(deflate);
 }
