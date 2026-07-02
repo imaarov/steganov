@@ -7,22 +7,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void prompt(char **file_name, char **secret_message);
+void prompt();
 void prompt_cleanup(char *secret_pointer, char *file_name_pointer);
 
 int main() {
     printf("steganov v%s\n", VERSION);
-
-    char *secret_message = NULL;
-    char *file_name      = NULL;
-
-    prompt(&file_name, &secret_message);
-    prompt_cleanup(secret_message, file_name);
-
+    prompt();
     return EXIT_SUCCESS;
 }
 
-void prompt(char **file_name, char **secret_message) {
+void prompt() {
     char buffer[BUFFER_LENGTH];
     char *message = NULL;
     while (1) {
@@ -35,28 +29,24 @@ void prompt(char **file_name, char **secret_message) {
         int user_option = (int)strtol(buffer, NULL, DEFAULT_USER_INPUT_NUMBER_BASE);
         switch (user_option) {
         case ENCODE:
-            if (encode(*file_name, *secret_message)) {
+            if (encode()) {
                 printf("INFO: successful encoding\n");
             } else {
                 printf("INFO: failed to encoding\n");
             }
             break;
         case DECODE:
-            message = decode(*file_name);
+            message = decode();
             if (message == NULL) {
                 printf("WARNING: could not find a message\n");
                 break;
             }
             printf("INFO: secret message extracted from file is: %s\n", message);
+            free(message);
             break;
         case EXIT:
         default:
             return;
         }
     }
-}
-
-void prompt_cleanup(char *secret_pointer, char *file_name_pointer) {
-    free(secret_pointer);
-    free(file_name_pointer);
 }
