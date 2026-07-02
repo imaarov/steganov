@@ -1,5 +1,5 @@
 cc=gcc
-CFLAGS= -DENABLE_DEBUG -O -Wall -Wextra -Iinclude
+CFLAGS= -DENABLE_DEBUG -O -Wall -Wextra -Iinclude -fsanitize=address -g -O0
 CLANG_TIDY=clang-tidy
 
 TARGET=bin/steganov
