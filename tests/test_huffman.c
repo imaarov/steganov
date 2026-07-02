@@ -9,16 +9,36 @@
 #include <string.h>
 #include <time.h>
 
-void test_huffman_code_table() {
-    unsigned char *data = malloc(33000);
+#define TEST_SIZE (1024 * 1024)
 
-    memset(data, 'A', 33000);
+void test_huffman_code_table() {
+    unsigned char *data = malloc(TEST_SIZE);
+
+    for (size_t i = 0; i < TEST_SIZE; i++) {
+        switch ((i / 4096) % 4) {
+            case 0:
+                data[i] = 0;
+                break;
+
+            case 1:
+                data[i] = (uint8_t)(i & 0xff);
+                break;
+
+            case 2:
+                data[i] = (uint8_t)((i / 8) & 0xff);
+                break;
+
+            case 3:
+                data[i] = 'A' + (i % 26);
+                break;
+        }
+    }
     // uint16_t data_len = strlen(data);
     struct timespec start;
     struct timespec end;
 
     clock_gettime(CLOCK_MONOTONIC, &start);
-    lz_tokens_stream_t *stream = lz_77_encode((byte *)data, 33000);
+    lz_tokens_stream_t *stream = lz_77_encode((byte *)data, TEST_SIZE);
     clock_gettime(CLOCK_MONOTONIC, &end);
     double timespent = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
     printf("lz 77 elapsed: %.9f sec\n", timespent);
@@ -33,7 +53,7 @@ void test_huffman_code_table() {
     assert(stream != NULL);
 
     printf("print lz77 tokens\n");
-    print_lz77_tokens(stream, stream->size);
+    //print_lz77_tokens(stream, stream->size);
 
     clock_gettime(CLOCK_MONOTONIC, &start);
     deflate_stream_t *deflate = deflate_encode(stream);
@@ -51,5 +71,9 @@ void test_huffman_code_table() {
     printf("print canonical huffman code");
     print_huffman(&huffman_code);
 
+    free(data);
+    free(huffman_code.distance);
+    free(huffman_code.literal_len);
+    free_deflate_stream(deflate);
     free_lz77(stream);
 }
