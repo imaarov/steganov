@@ -47,6 +47,7 @@ typedef struct {
 } deflate_stream_t;
 
 deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream);
+void free_deflate_stream(deflate_stream_t *deflate_stream);
 void print_deflate(const deflate_stream_t *deflate_stream);
 
 // clang-format off
