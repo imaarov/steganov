@@ -9,32 +9,30 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool encode(char *file_name, char *secret_message) {
-    file_name      = get_file_name();
-    secret_message = get_secret();
+bool encode() {
+    bool status = false;
+    char *file_name      = get_file_name();
+    char *secret_message = get_secret();
     if (file_name == NULL || secret_message == NULL) {
-        free(file_name);
-        free(secret_message);
         printf("WARNING: file name or secret message should not be empty\n");
-        return false;
+        goto cleanup;
     }
     const char *file_ext = get_file_extension(file_name);
     if (file_ext == NULL) {
         FATAL("there is no file extension /:\n");
-        return false;
+        goto cleanup;
     }
     SupportedExtension ext = get_supported_ext(file_ext);
     DEBUG("supported is : %d\n", ext);
     if (ext == UNDEFINED) {
         FATAL("File type is not supported\n");
-        return false;
+        goto cleanup;
     }
     FILE *file = fopen(file_name, "rb+");
     if (file == NULL) {
         FATAL("failed to open the file named: %s\n", file_name);
-        return false;
+        goto cleanup;
     }
-    bool status = false;
     switch (ext) {
     case BMP:
         status = encode_bmp(file, secret_message);
@@ -49,13 +47,21 @@ bool encode(char *file_name, char *secret_message) {
         return false;
     }
     if (!status) {
-        FATAL("Failed to encode\n");
-        return false;
+        FATAL("failed to encode");
+        goto cleanup;
     }
+    status = true;
     DEBUG("Successful encoding operation\n");
 
+cleanup:
+    if (file_name) {
+        free(file_name);
+    }
+    if (secret_message) {
+        free(secret_message);
+    }
     fclose(file);
-    return true;
+    return status;
 }
 
 void embed_secret_byte_in_file(FILE *file, const byte secret_byte) {

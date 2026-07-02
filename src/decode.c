@@ -5,27 +5,32 @@
 #include "../include/wav.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-char *decode(const char *file_name) {
-    file_name = get_file_name();
+char *decode() {
+    char *file_name = get_file_name();
     if (file_name == NULL) {
         FATAL("file name should not be empty");
+        free(file_name);
         return NULL;
     }
     const char *file_ext = get_file_extension(file_name);
     if (file_ext == NULL) {
         FATAL("there is no file extension /:\n");
+        free(file_name);
         return NULL;
     }
     SupportedExtension ext = get_supported_ext(file_ext);
     if (ext == UNDEFINED) {
         FATAL("file extension is not supported\n");
+        free(file_name);
         return NULL;
     }
     FILE *file = fopen(file_name, "rb+");
     if (file == NULL) {
         FATAL("file can't open the file\n");
+        free(file_name);
         return NULL;
     }
     char *message = NULL;
@@ -41,15 +46,18 @@ char *decode(const char *file_name) {
         break;
     case UNDEFINED:
         fclose(file);
+        free(file_name);
         return NULL;
     }
     if (message == NULL) {
         DEBUG("INFO: decoding operation failed\n");
         fclose(file);
+        free(file_name);
         return NULL;
     }
     DEBUG("INFO: Successful decoding operation\n");
     fclose(file);
+    free(file_name);
     return message;
 }
 
