@@ -15,7 +15,7 @@ static void run_case(const char *name, byte *data, uint32_t size);
 void test_lz77_token_stream(void) {
     printf("\n=== LZ77 TEST SUITE ===\n\n");
 
-    /* 
+    /*
      * 1. Single byte
      */
     {
@@ -23,7 +23,7 @@ void test_lz77_token_stream(void) {
         run_case("single byte", data, sizeof(data));
     }
 
-    /* 
+    /*
      * 2. Two bytes
      */
     {
@@ -159,7 +159,7 @@ void test_lz77_token_stream(void) {
         free(data);
     }
 
-    /* 
+    /*
      * 15. Search window + 1
      */
     {
