@@ -16,21 +16,21 @@ void test_huffman_code_table() {
 
     for (size_t i = 0; i < TEST_SIZE; i++) {
         switch ((i / 4096) % 4) {
-            case 0:
-                data[i] = 0;
-                break;
+        case 0:
+            data[i] = 0;
+            break;
 
-            case 1:
-                data[i] = (uint8_t)(i & 0xff);
-                break;
+        case 1:
+            data[i] = (uint8_t)(i & 0xff);
+            break;
 
-            case 2:
-                data[i] = (uint8_t)((i / 8) & 0xff);
-                break;
+        case 2:
+            data[i] = (uint8_t)((i / 8) & 0xff);
+            break;
 
-            case 3:
-                data[i] = 'A' + (i % 26);
-                break;
+        case 3:
+            data[i] = 'A' + (i % 26);
+            break;
         }
     }
     // uint16_t data_len = strlen(data);
@@ -53,7 +53,7 @@ void test_huffman_code_table() {
     assert(stream != NULL);
 
     printf("print lz77 tokens\n");
-    //print_lz77_tokens(stream, stream->size);
+    // print_lz77_tokens(stream, stream->size);
 
     clock_gettime(CLOCK_MONOTONIC, &start);
     deflate_stream_t *deflate = deflate_encode(stream);
