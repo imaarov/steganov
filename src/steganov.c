@@ -8,7 +8,6 @@
 #include <stdlib.h>
 
 void prompt();
-void prompt_cleanup(char *secret_pointer, char *file_name_pointer);
 
 int main() {
     printf("steganov v%s\n", VERSION);
