@@ -1,4 +1,4 @@
-#include "../include/deflate.h"
+#include "../include/deflate_lz77.h"
 #include "../include/lz77.h"
 #include "utils.h"
 #include <stdint.h>

@@ -1,7 +1,7 @@
 #ifndef HUFFMAN_H
 #define HUFFMAN_H
 
-#include "deflate.h"
+#include "deflate_lz77.h"
 #include <stdbool.h>
 #include <stdint.h>
 

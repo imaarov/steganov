@@ -1,5 +1,5 @@
 #include "../include/huffman.h"
-#include "../include/deflate.h"
+#include "../include/deflate_lz77.h"
 #include "../include/min_heap.h"
 #include <stdbool.h>
 #include <stddef.h>

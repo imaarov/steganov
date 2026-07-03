@@ -6,8 +6,8 @@
  *              length range         : 257-285
  *              distance range       : 1-32768
  */
-#ifndef DEFLATE_H
-#define DEFLATE_H
+#ifndef DEFLATE_LZ77_H
+#define DEFLATE_LZ77_H
 
 #include "lz77.h"
 #include <stdint.h>
