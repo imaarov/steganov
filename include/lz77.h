@@ -9,6 +9,12 @@
 #define MIN_MATCH_LENGTH       3
 #define MAX_MATCH_LENGTH       258
 #define WINDOW_SIZE            SEARCH_BUFFER_SIZE + LOOK_AHEAD_BUFFER_SIZE
+#define HASH_BITS              15
+#define HASH_SIZE              (1 << HASH_BITS)
+#define HASH_MASK              (HASH_SIZE - 1)
+#define HASH_SHIFT             ((HASH_BITS + MIN_MATCH_LENGTH - 1) / MIN_MATCH_LENGTH)
+#define HASH_INIT_VALUE        -1
+#define MAX_CHAIN_LENGTH       256
 #define EOB                    256
 
 typedef struct {
@@ -33,6 +39,11 @@ typedef struct {
     lz_token_t *tokens;
     uint32_t size;
 } lz_tokens_stream_t;
+
+typedef struct {
+    int head[HASH_SIZE];
+    int *prev;
+} hash_chain_t;
 
 lz_tokens_stream_t *lz_77_encode(byte *data, uint32_t data_len);
 byte *lz_77_decode(const lz_tokens_stream_t *lz77_stream);
