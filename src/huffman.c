@@ -10,7 +10,7 @@
 
 static uint16_t get_active_literal_length_symbol_count(const frequency_t *frequency);
 static uint8_t get_active_distance_symbol(const frequency_t *frequency);
-static frequency_t initialize_frequency_table(deflate_stream_t *deflate_stream);
+static frequency_t initialize_frequency_table(deflate_lz77_stream_t *deflate_stream);
 static huffman_init_leaves *initialize_leaves_array_from_frequency(const frequency_t *frequency);
 static void build_huffman_len_code(huffman_tree_t *root, huffman_code_t *code, uint16_t len);
 static void destroy_huffman_tree(huffman_tree_t *root);
@@ -19,7 +19,7 @@ static huffman_tree_t *construct_huffman_tree(min_heap_t *);
 static void sort_active_codes(huffman_code_t *, uint32_t);
 static void generate_huffman_code(huffman_code_t *, uint32_t);
 
-canonical_huffman_code build_huffman_tree(deflate_stream_t *deflate) {
+canonical_huffman_code build_huffman_tree(deflate_lz77_stream_t *deflate) {
     canonical_huffman_code canonical_code = {
         .literal_len = NULL, .distance = NULL, .status = false};
     frequency_t frequency                    = {0};
@@ -273,7 +273,7 @@ error:
     return NULL;
 }
 
-static frequency_t initialize_frequency_table(deflate_stream_t *deflate_stream) {
+static frequency_t initialize_frequency_table(deflate_lz77_stream_t *deflate_stream) {
     frequency_t frequency = {.distance_frequency = NULL, .literal_length_frequency = NULL};
     if (NULL == deflate_stream) {
         FATAL("failed to initialize frequency table; deflate stream was NULL");

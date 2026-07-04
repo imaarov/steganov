@@ -39,16 +39,16 @@ typedef struct {
     uint16_t distance_symbol;
     uint16_t distance_extra_value;
     uint8_t distance_extra_count;
-} deflate_token_t;
+} deflate_lz77_token_t;
 
 typedef struct {
-    deflate_token_t *tokens;
+    deflate_lz77_token_t *tokens;
     uint32_t size;
-} deflate_stream_t;
+} deflate_lz77_stream_t;
 
-deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream);
-void free_deflate_stream(deflate_stream_t *deflate_stream);
-void print_deflate(const deflate_stream_t *deflate_stream);
+deflate_lz77_stream_t *deflate_lz77_encode(const lz_tokens_stream_t *token_stream);
+void free_deflate_lz77_stream(deflate_lz77_stream_t *deflate_lz77_stream);
+void print_deflate_lz77(const deflate_lz77_stream_t *deflate_lz77_stream);
 
 // clang-format off
 static const length_code_t LENGTH_CODES[DEFLATE_LENGTH_CODE_TABLE_SIZE] = {

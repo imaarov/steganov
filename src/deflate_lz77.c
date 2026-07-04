@@ -8,17 +8,17 @@
 static length_code_t get_deflate_length_symbol(uint16_t length);
 static distance_code_t get_deflate_distance_symbol(uint16_t distance);
 
-deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream) {
+deflate_lz77_stream_t *deflate_lz77_encode(const lz_tokens_stream_t *token_stream) {
     if (NULL == token_stream) {
         FATAL("lz77 token stream is NULL");
         return NULL;
     }
 
-    if ((sizeof(deflate_token_t) * token_stream->size) > SIZE_MAX) {
+    if ((sizeof(deflate_lz77_token_t) * token_stream->size) > SIZE_MAX) {
         FATAL("overflow for allcoation");
         return NULL;
     }
-    deflate_token_t *deflate = malloc(sizeof(deflate_token_t) * token_stream->size);
+    deflate_lz77_token_t *deflate = malloc(sizeof(deflate_lz77_token_t) * token_stream->size);
     if (NULL == deflate) {
         FATAL("cannot allocate memory for deflate tokens");
         return NULL;
@@ -62,7 +62,7 @@ deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream) {
             deflate[i].distance_extra_count = 0;
         }
     }
-    deflate_stream_t *deflate_stream = malloc(sizeof(deflate_stream_t));
+    deflate_lz77_stream_t *deflate_stream = malloc(sizeof(deflate_lz77_stream_t));
     if (NULL == deflate_stream) {
         FATAL("failed to allocate defalte stream");
         free(deflate);
@@ -73,7 +73,7 @@ deflate_stream_t *deflate_encode(const lz_tokens_stream_t *token_stream) {
     return deflate_stream;
 }
 
-void print_deflate(const deflate_stream_t *deflate_stream) {
+void print_deflate_lz77(const deflate_lz77_stream_t *deflate_stream) {
     for (uint16_t i = 0; i < deflate_stream->size; i++) {
         if (deflate_stream->tokens[i].type == LITERAL) {
             printf("[LITERAL] : %u\n", deflate_stream->tokens[i].literal);
@@ -92,7 +92,7 @@ void print_deflate(const deflate_stream_t *deflate_stream) {
     }
 }
 
-void free_deflate_stream(deflate_stream_t *deflate_stream) {
+void free_deflate_lz77_stream(deflate_lz77_stream_t *deflate_stream) {
     if (NULL == deflate_stream) {
         return;
     }

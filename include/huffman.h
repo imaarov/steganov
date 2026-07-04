@@ -41,7 +41,7 @@ typedef struct {
     bool status;
 } canonical_huffman_code;
 
-canonical_huffman_code build_huffman_tree(deflate_stream_t *deflate);
+canonical_huffman_code build_huffman_tree(deflate_lz77_stream_t *deflate);
 void print_huffman(const canonical_huffman_code *code);
 
 #endif
