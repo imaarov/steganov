@@ -111,9 +111,9 @@ make run-test
 - [x] Implement canonical huffman algorithm
 - [x] Implement LZ77 algorithm
 - [x] Make basic LZ77 algorithm compatible with DEFLATE 
-- [ ] Complete Huffman and finally generate canonical huffman table length
+- [x] Complete Huffman and finally generate canonical huffman table length
 - [x] Implement hashing for LZ77 find match function to improve the performance
-- [ ] Add Bitstream for encoding/decoding
+- [x] Add Bitstream for encoding/decoding
 - [ ] Create deflate module for connecting Huffman/LZ77/Bitstream together to make the final DEFLATE pipeline
 - [ ] Add custom print function for this project
 - [ ] Implement Knuth Morris Pratt algorithm
