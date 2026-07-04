@@ -45,7 +45,8 @@ static void encode_deflate_no_compression(byte *data, uint32_t data_len, bitstre
         }
         bitstream_write_bits_lsb(stream, process_bytes + block_size >= data_len ? 1 : 0, 1);
         bitstream_write_bits_lsb(stream, BTYPE_NO_COMPRESSION, 2);
-        // based on the 1951 RFC we should skip bits remain from the byte after emben deflate block header
+        // based on the 1951 RFC we should skip bits remain from the byte after emben deflate block
+        // header
         uint8_t padding_bits = stream->bit_pos == 7 ? 0 : 8 - stream->bit_pos;
         bitstream_write_bits_lsb(stream, 0, padding_bits);
 

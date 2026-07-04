@@ -9,7 +9,8 @@
 #ifndef DEFLATE_H
 #define DEFLATE_H
 
-#define FIX_SIZE_BLOCK_SIZE 32768
+#include "bitstream.h"
+#define FIX_SIZE_BLOCK_SIZE     32768
 #define UNCOMPRESSED_BLOCK_SIZE 65535
 
 typedef enum {
@@ -24,9 +25,11 @@ typedef enum {
     BTYPE_ILLEGAL         = 0b11,
 } BTYPE;
 
+bitstream_t deflate_encode(byte *un_compressed_data, uint32_t data_len, BTYPE btype);
+
 typedef struct {
     BFINAL bfinal;
-    BTYPE  btype;
+    BTYPE btype;
 } deflate_block_t;
 
 typedef struct {
