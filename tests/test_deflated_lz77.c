@@ -17,7 +17,7 @@ void test_deflated_lz77_token_stream() {
     assert(stream != NULL);
     assert(stream->size == 9);
 
-    deflate_stream_t *deflate = deflate_encode(stream);
+    deflate_lz77_stream_t *deflate = deflate_lz77_encode(stream);
     assert(deflate != NULL);
     assert(deflate->size == stream->size);
     assert(deflate->tokens[0].literal == stream->tokens[0].literal);
@@ -26,6 +26,6 @@ void test_deflated_lz77_token_stream() {
 
     free_lz77(stream);
     printf("print deflated tokens\n");
-    print_deflate(deflate);
-    free_deflate_stream(deflate);
+    print_deflate_lz77(deflate);
+    free_deflate_lz77_stream(deflate);
 }

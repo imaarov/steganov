@@ -56,13 +56,13 @@ void test_huffman_code_table() {
     // print_lz77_tokens(stream, stream->size);
 
     clock_gettime(CLOCK_MONOTONIC, &start);
-    deflate_stream_t *deflate = deflate_encode(stream);
+    deflate_lz77_stream_t *deflate = deflate_lz77_encode(stream);
     clock_gettime(CLOCK_MONOTONIC, &end);
     timespent = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
     printf("deflate elapsed: %.9f sec\n", timespent);
 
     printf("print deflate token\n");
-    print_deflate(deflate);
+    print_deflate_lz77(deflate);
     clock_gettime(CLOCK_MONOTONIC, &start);
     canonical_huffman_code huffman_code = build_huffman_tree(deflate);
     clock_gettime(CLOCK_MONOTONIC, &end);
@@ -74,6 +74,6 @@ void test_huffman_code_table() {
     free(data);
     free(huffman_code.distance);
     free(huffman_code.literal_len);
-    free_deflate_stream(deflate);
+    free_deflate_lz77_stream(deflate);
     free_lz77(stream);
 }
