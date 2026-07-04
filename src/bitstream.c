@@ -20,7 +20,7 @@ void bitstream_init(bitstream_t *stream) {
         return;
     }
     memset(stream->data, 0, stream->capacity);
-    stream->bit_pos  = 7;
+    stream->bit_pos  = 0;
     stream->byte_pos = 0;
 }
 
@@ -54,11 +54,11 @@ void bitstream_write_bits_lsb(bitstream_t *stream, uint32_t value, uint8_t count
             stream->data[stream->byte_pos] |= (uint8_t)(1u << stream->bit_pos);
         }
 
-        if (stream->bit_pos == 0) {
-            stream->bit_pos = 7;
+        if (stream->bit_pos == 7) {
+            stream->bit_pos = 0;
             stream->byte_pos++;
         } else {
-            stream->bit_pos--;
+            stream->bit_pos++;
         }
     }
 }
@@ -101,7 +101,11 @@ size_t bitstream_size(const bitstream_t *stream) {
     if (NULL == stream || NULL == stream->data) {
         return 0;
     }
-    return stream->byte_pos + (stream->bit_pos == 7 ? 0 : 1);
+    size_t size = stream->byte_pos;
+    if (stream->bit_pos != 0) {
+        ++size;
+    }
+    return size;
 }
 
 void print_bit_stream(const bitstream_t *stream) {
@@ -151,9 +155,9 @@ void bitstream_flush(bitstream_t *stream) {
     if (NULL == stream || NULL == stream->data) {
         return;
     }
-    if (stream->bit_pos != 7 ) {
-        stream->byte_pos++;
-        stream->bit_pos = 7;
-    }
 
+    if (stream->bit_pos != 0) {
+        stream->byte_pos++;
+        stream->bit_pos = 0;
+    }
 }
