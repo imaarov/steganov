@@ -173,6 +173,11 @@ cleanup:
     return canonical_code;
 }
 
+void free_huffman(canonical_huffman_code huffman_code) {
+    free(huffman_code.distance);
+    free(huffman_code.literal_len);
+}
+
 void print_huffman(const canonical_huffman_code *code) {
     for (uint16_t i = 0; i < code->literal_len_size; i++) {
         printf("literal : length: %u, code: %u, symbol: %u\n", code->literal_len[i].length,

@@ -42,6 +42,7 @@ typedef struct {
 } canonical_huffman_code;
 
 canonical_huffman_code build_huffman_tree(deflate_lz77_stream_t *deflate);
+void free_huffman(canonical_huffman_code code);
 void print_huffman(const canonical_huffman_code *code);
 
 #endif
