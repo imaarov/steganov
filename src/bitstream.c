@@ -13,7 +13,7 @@ void bitstream_init(bitstream_t *stream) {
         return;
     }
     stream->capacity = BITSTREAM_INITIAL_CAPACITY;
-    stream->data = malloc(stream->capacity);
+    stream->data     = malloc(stream->capacity);
     if (NULL == stream->data) {
         FATAL("bitstream_init: failed to allocate memory");
         stream->capacity = 0;
@@ -48,8 +48,8 @@ void bitstream_write_bits_lsb(bitstream_t *stream, uint32_t value, uint8_t count
         // we check the target bit, if its one we only insert one in the stream of data
         // beside thats theres only one other situation left that is the target bit = 0
         // then because we do the zeroing in the init function, meaning that all stream data
-        // should be zero from inital or from grow function, we should not insert the 0 cause its already there
-        // we just move the bit pointer by one
+        // should be zero from inital or from grow function, we should not insert the 0 cause its
+        // already there we just move the bit pointer by one
         if (value & (1u << i)) {
             stream->data[stream->byte_pos] |= (uint8_t)(1u << stream->bit_pos);
         }
@@ -127,8 +127,8 @@ void bitstream_destroy(bitstream_t *stream) {
     free(stream->data);
     stream->capacity = 0;
     stream->byte_pos = 0;
-    stream->bit_pos = 0;
-    stream->data = NULL;
+    stream->bit_pos  = 0;
+    stream->data     = NULL;
 }
 
 static bool bitstream_grow(bitstream_t *stream) {
@@ -141,13 +141,13 @@ static bool bitstream_grow(bitstream_t *stream) {
     }
     size_t old_capacity = stream->capacity;
     size_t new_capacity = stream->capacity * 2;
-    byte *temp = realloc(stream->data, new_capacity);
+    byte *temp          = realloc(stream->data, new_capacity);
     if (NULL == temp) {
         FATAL("failed to allocate memory");
         return false;
     }
     memset(temp + old_capacity, 0, new_capacity - old_capacity);
-    stream->data = temp;
+    stream->data     = temp;
     stream->capacity = new_capacity;
     return true;
 }
