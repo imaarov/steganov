@@ -139,13 +139,14 @@ static bool bitstream_grow(bitstream_t *stream) {
         FATAL("bit stream will be reach the SIZE MAX after grow");
         return false;
     }
+    size_t old_capacity = stream->capacity;
     size_t new_capacity = stream->capacity * 2;
     byte *temp = realloc(stream->data, new_capacity);
     if (NULL == temp) {
         FATAL("failed to allocate memory");
         return false;
     }
-    memset(temp + stream->capacity, 0, new_capacity - stream->capacity);
+    memset(temp + old_capacity, 0, new_capacity - old_capacity);
     stream->data = temp;
     stream->capacity = new_capacity;
     return true;
