@@ -1,12 +1,15 @@
 #include "../include/deflate.h"
 #include "../include/bitstream.h"
 #include "deflate_lz77.h"
+#include "huffman.h"
 #include "lz77.h"
 #include "utils.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 static void encode_deflate_no_compression(byte *data, uint32_t data_len, bitstream_t *bitstream);
+static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstream_t *bitstream);
 
 bitstream_t deflate_encode(byte *un_compressed_data, uint32_t data_len, BTYPE btype) {
     bitstream_t stream;
@@ -17,16 +20,8 @@ bitstream_t deflate_encode(byte *un_compressed_data, uint32_t data_len, BTYPE bt
         return stream;
     }
 
-    lz_tokens_stream_t *lz_stream = lz_77_encode(un_compressed_data, data_len);
-    if (NULL == lz_stream) {
-        FATAL("failed to encode lz77 in deflate encoder");
-        return stream;
-    }
-
-    deflate_lz77_stream_t *deflate_lz77_stream = deflate_lz77_encode(lz_stream);
-    if (NULL == deflate_lz77_stream) {
-        FATAL("failed to encode deflate lz77 in deflate encoder");
-        free_lz77(lz_stream);
+    if (btype == BTYPE_DYNAMIC_HUFFMAN) {
+        encode_deflate_dynamic_huffman(un_compressed_data, data_len, &stream);
         return stream;
     }
 
@@ -43,7 +38,9 @@ static void encode_deflate_no_compression(byte *data, uint32_t data_len, bitstre
         if (block_size > UNCOMPRESSED_BLOCK_SIZE) {
             block_size = UNCOMPRESSED_BLOCK_SIZE;
         }
-        bitstream_write_bits_lsb(stream, process_bytes + block_size >= data_len ? 1 : 0, 1);
+        bitstream_write_bits_lsb(
+            stream,
+            process_bytes + block_size >= data_len ? BFINAL_LAST_BLOCK : BFINAL_NOT_LAST_BLOCK, 1);
         bitstream_write_bits_lsb(stream, BTYPE_NO_COMPRESSION, 2);
         // based on the 1951 RFC we should skip bits remain from the byte after emben deflate block
         // header
@@ -61,4 +58,53 @@ static void encode_deflate_no_compression(byte *data, uint32_t data_len, bitstre
 
         process_bytes += block_size;
     }
+}
+
+static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstream_t *bitstream) {
+    lz_tokens_stream_t *lz_stream = lz_77_encode(data, data_len);
+    if (NULL == lz_stream) {
+        FATAL("failed to encode lz77 in deflate encoder");
+        return;
+    }
+
+    deflate_lz77_stream_t *deflate_lz77_stream = deflate_lz77_encode(lz_stream);
+    if (NULL == deflate_lz77_stream) {
+        FATAL("failed to encode deflate lz77 in deflate encoder");
+        free_lz77(lz_stream);
+        return;
+    }
+
+    canonical_huffman_code huffman_code = build_huffman_tree(deflate_lz77_stream);
+
+    bitstream_write_bits_lsb(bitstream, BFINAL_LAST_BLOCK, 1);
+    bitstream_write_bits_lsb(bitstream, BTYPE_DYNAMIC_HUFFMAN, 2);
+
+    // implement HLIT (5 bit)
+    // format HLIT: Literal/Len code - 257
+    uint32_t hlit = 0;
+    for (uint32_t i = 0; i < huffman_code.literal_len_size; i++) {
+        if (huffman_code.literal_len[i].length > 0) {
+            hlit = huffman_code.literal_len[i].symbol > hlit ? huffman_code.literal_len[i].symbol
+                                                             : hlit;
+        }
+    }
+    hlit -= 256;
+
+    // implement HDIST (5 bit)
+    // format HDIST: Distance code - 1
+    uint32_t hdist = 0;
+    for (uint32_t i = 0; i < huffman_code.distance_size; i++) {
+        if (huffman_code.distance[i].length > 0) {
+            hdist =
+                huffman_code.distance[i].symbol > hdist ? huffman_code.distance[i].symbol : hdist;
+        }
+    }
+
+    // implement HCLEN (4 bit)
+    // format HCLEN: Code Length codes - 4
+
+    // implement Code Length Table (3 bit each)
+
+    free_lz77(lz_stream);
+    free_deflate_lz77_stream(deflate_lz77_stream);
 }
