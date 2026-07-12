@@ -207,8 +207,3 @@ for (int i = 0; i < DATA_SIZE; i++) {
 }
 crc ^= 0xFF; // final XOR
 ```
-
-(a few things i should cover later)
-common poly table
-how to verify 
-limitations
