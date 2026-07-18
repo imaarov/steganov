@@ -14,6 +14,9 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
 static huffman_code_t *find_code(huffman_code_t *codes, uint32_t size, uint16_t symbol);
 static bool run_length_encode(const byte *lengths, uint32_t total, cl_rle_stream_t *out,
                               uint32_t *freq);
+static void write_dynamic_header(bitstream_t *stream, const canonical_huffman_code *huffman_code,
+                                 byte *ll_lengths, uint32_t hlit_count, byte *dist_lengths,
+                                 uint32_t hdist_count);
 
 bitstream_t deflate_encode(byte *un_compressed_data, uint32_t data_len, BTYPE btype) {
     bitstream_t stream;
@@ -94,7 +97,6 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
         if (huffman_code.literal_len[i].symbol > max_ll_symbol)
             max_ll_symbol = huffman_code.literal_len[i].symbol;
     uint32_t hlit_count = (uint32_t)max_ll_symbol + 1;
-    uint32_t hlit       = hlit_count - 257;
 
     bool have_distances      = huffman_code.distance_size > 0;
     uint16_t max_dist_symbol = 0;
@@ -102,7 +104,6 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
         if (huffman_code.distance[i].symbol > max_dist_symbol)
             max_dist_symbol = huffman_code.distance[i].symbol;
     uint32_t hdist_count = have_distances ? (uint32_t)max_dist_symbol + 1 : 1;
-    uint32_t hdist       = hdist_count - 1;
 
     byte *ll_lengths = calloc(hlit_count, sizeof(byte));
     for (uint32_t i = 0; i < huffman_code.literal_len_size; i++)
@@ -116,51 +117,10 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
         dist_lengths[0] = 1;
     }
 
-    uint32_t combined_size = hlit_count + hdist_count;
-    byte *combined         = malloc(combined_size);
-    memcpy(combined, ll_lengths, hlit_count);
-    memcpy(combined + hlit_count, dist_lengths, hdist_count);
+    write_dynamic_header(bitstream, &huffman_code, ll_lengths, hlit_count, dist_lengths,
+                         hdist_count);
     free(ll_lengths);
     free(dist_lengths);
-
-    cl_rle_stream_t rle                         = {0};
-    uint32_t cl_freq[CODE_LENGTH_ALPHABET_SIZE] = {0};
-    run_length_encode(combined, combined_size, &rle, cl_freq);
-    free(combined);
-
-    huffman_code_set_t cl_code = build_canonical_huffman(cl_freq, CODE_LENGTH_ALPHABET_SIZE);
-
-    uint8_t cl_lengths_in_order[CODE_LENGTH_ALPHABET_SIZE] = {0};
-    for (uint16_t i = 0; i < cl_code.size; i++) {
-        for (uint8_t p = 0; p < CODE_LENGTH_ALPHABET_SIZE; p++) {
-            if (CLC_ORDER[p] == cl_code.codes[i].symbol) {
-                cl_lengths_in_order[p] = (uint8_t)cl_code.codes[i].length;
-                break;
-            }
-        }
-    }
-    fprintf(stderr, "DEBUG rle.count=%u cl_code.size=%u\n", rle.count, cl_code.size);
-    fprintf(stderr, "DEBUG deflate_lz77_stream->size=%u huffman_code.literal_len_size=%u\n",
-            deflate_lz77_stream->size, huffman_code.literal_len_size);
-    uint8_t hclen_count = CODE_LENGTH_ALPHABET_SIZE;
-    while (hclen_count > 4 && cl_lengths_in_order[hclen_count - 1] == 0)
-        hclen_count--;
-
-    bitstream_write_bits_lsb(bitstream, hlit, 5);
-    bitstream_write_bits_lsb(bitstream, hdist, 5);
-    bitstream_write_bits_lsb(bitstream, hclen_count - 4, 4);
-
-    for (uint8_t i = 0; i < hclen_count; i++)
-        bitstream_write_bits_lsb(bitstream, cl_lengths_in_order[i], 3);
-
-    for (uint32_t i = 0; i < rle.count; i++) {
-        huffman_code_t *hc = find_code(cl_code.codes, cl_code.size, rle.items[i].symbol);
-        bitstream_write_bits_msb(bitstream, hc->code, hc->length); // Huffman codes: MSB-first
-        if (rle.items[i].extra_bits > 0)
-            bitstream_write_bits_lsb(bitstream, rle.items[i].extra_value, rle.items[i].extra_bits);
-    }
-    free(rle.items);
-    free_huffman_code_set(cl_code);
 
     for (uint32_t i = 0; i < deflate_lz77_stream->size; i++) {
         deflate_lz77_token_t *tok = &deflate_lz77_stream->tokens[i];
@@ -195,6 +155,57 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
     free_lz77(lz_stream);
     free_deflate_lz77_stream(deflate_lz77_stream);
     free_huffman(huffman_code);
+}
+
+static void write_dynamic_header(bitstream_t *stream, const canonical_huffman_code *huffman_code,
+                                 byte *ll_lengths, uint32_t hlit_count, byte *dist_lengths,
+                                 uint32_t hdist_count) {
+    uint32_t combined_size = hlit_count + hdist_count;
+    byte *combined         = malloc(combined_size);
+    memcpy(combined, ll_lengths, hlit_count);
+    if (hdist_count > 0)
+        memcpy(combined + hlit_count, dist_lengths, hdist_count);
+
+    cl_rle_stream_t rle                         = {0};
+    uint32_t cl_freq[CODE_LENGTH_ALPHABET_SIZE] = {0};
+    run_length_encode(combined, combined_size, &rle, cl_freq);
+    free(combined);
+
+    huffman_code_set_t cl_code = build_canonical_huffman(cl_freq, CODE_LENGTH_ALPHABET_SIZE);
+
+    uint8_t cl_lengths_in_order[CODE_LENGTH_ALPHABET_SIZE] = {0};
+    for (uint16_t i = 0; i < cl_code.size; i++) {
+        for (uint8_t p = 0; p < CODE_LENGTH_ALPHABET_SIZE; p++) {
+            if (CLC_ORDER[p] == cl_code.codes[i].symbol) {
+                cl_lengths_in_order[p] = (uint8_t)cl_code.codes[i].length;
+                break;
+            }
+        }
+    }
+
+    uint8_t hclen_count = CODE_LENGTH_ALPHABET_SIZE;
+    while (hclen_count > 4 && cl_lengths_in_order[hclen_count - 1] == 0)
+        hclen_count--;
+
+    DEBUG("rle.count=%u cl_code.size=%u", rle.count, cl_code.size);
+    DEBUG("huffman_code.literal_len_size=%u", huffman_code->literal_len_size);
+
+    bitstream_write_bits_lsb(stream, hlit_count - 257, 5);
+    bitstream_write_bits_lsb(stream, hdist_count > 0 ? hdist_count - 1 : 0, 5);
+    bitstream_write_bits_lsb(stream, hclen_count - 4, 4);
+
+    for (uint8_t i = 0; i < hclen_count; i++)
+        bitstream_write_bits_lsb(stream, cl_lengths_in_order[i], 3);
+
+    for (uint32_t i = 0; i < rle.count; i++) {
+        huffman_code_t *hc = find_code(cl_code.codes, cl_code.size, rle.items[i].symbol);
+        bitstream_write_bits_msb(stream, hc->code, hc->length);
+        if (rle.items[i].extra_bits > 0)
+            bitstream_write_bits_lsb(stream, rle.items[i].extra_value, rle.items[i].extra_bits);
+    }
+
+    free(rle.items);
+    free_huffman_code_set(cl_code);
 }
 
 static bool cl_rle_push(cl_rle_stream_t *s, uint8_t symbol, uint8_t extra_bits,
