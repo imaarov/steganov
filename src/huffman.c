@@ -1,6 +1,7 @@
 #include "../include/huffman.h"
 #include "../include/deflate_lz77.h"
 #include "../include/min_heap.h"
+#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -8,169 +9,44 @@
 #include <stdlib.h>
 #include <string.h>
 
-static uint16_t get_active_literal_length_symbol_count(const frequency_t *frequency);
-static uint8_t get_active_distance_symbol(const frequency_t *frequency);
 static frequency_t initialize_frequency_table(deflate_lz77_stream_t *deflate_stream);
-static huffman_init_leaves *initialize_leaves_array_from_frequency(const frequency_t *frequency);
 static void build_huffman_len_code(huffman_tree_t *root, huffman_code_t *code, uint16_t len);
 static void destroy_huffman_tree(huffman_tree_t *root);
-static bool fill_min_heap(min_heap_t *, huffman_tree_t **, uint16_t);
 static huffman_tree_t *construct_huffman_tree(min_heap_t *);
 static void sort_active_codes(huffman_code_t *, uint32_t);
 static void generate_huffman_code(huffman_code_t *, uint32_t);
 
 canonical_huffman_code build_huffman_tree(deflate_lz77_stream_t *deflate) {
-    canonical_huffman_code canonical_code = {
-        .literal_len = NULL, .distance = NULL, .status = false};
-    frequency_t frequency                    = {0};
-    huffman_init_leaves *init_leaves         = NULL;
-    min_heap_t *min_heap_distance            = NULL;
-    huffman_tree_t *literal_len_root         = NULL;
-    huffman_tree_t *distance_root            = NULL;
-    huffman_code_t *literal_len_codes        = NULL;
-    huffman_code_t *distance_codes           = NULL;
-    huffman_code_t *literal_len_active_codes = NULL;
-    huffman_code_t *distance_active_codes    = NULL;
-    min_heap_t *min_heap_literal_len         = NULL;
+    canonical_huffman_code result = { .literal_len = NULL, .distance = NULL, .status = false };
 
-    if (NULL == deflate) {
-        goto cleanup;
-    }
-    frequency = initialize_frequency_table(deflate);
-    if (NULL == frequency.distance_frequency || NULL == frequency.literal_length_frequency) {
-        goto cleanup;
+    if (!deflate) return result;
+
+    frequency_t freq = initialize_frequency_table(deflate);
+    if (!freq.literal_length_frequency || !freq.distance_frequency) {
+        free(freq.literal_length_frequency);
+        free(freq.distance_frequency);
+        return result;
     }
 
-    init_leaves = initialize_leaves_array_from_frequency(&frequency);
-    if (NULL == init_leaves) {
-        goto cleanup;
+    huffman_code_set_t ll = build_canonical_huffman(freq.literal_length_frequency,
+                                                    DEFLATE_LITERAL_LENGTH_SIZE);
+    huffman_code_set_t dist = build_canonical_huffman(freq.distance_frequency,
+                                                      DEFLATE_DISTANCE_SIZE);
+
+    free(freq.literal_length_frequency);
+    free(freq.distance_frequency);
+
+    if (!ll.status) {
+        free_huffman_code_set(dist);
+        return result;
     }
 
-    uint16_t ll_count = init_leaves->literal_len_active_symbol;
-    uint8_t d_count   = init_leaves->distance_active_symbol;
-
-    if (ll_count > 0 && NULL == init_leaves->literal_len_leaves) {
-        goto cleanup;
-    }
-    if (d_count > 0 && NULL == init_leaves->distance_leaves) {
-        goto cleanup;
-    }
-
-    if (d_count > 0) {
-        min_heap_distance = min_heap_create(init_leaves->distance_active_symbol);
-        if (NULL == min_heap_distance) {
-            goto cleanup;
-        }
-        if (!fill_min_heap(min_heap_distance, init_leaves->distance_leaves,
-                           init_leaves->distance_active_symbol))
-            goto cleanup;
-        distance_root = construct_huffman_tree(min_heap_distance);
-        if (NULL == distance_root) {
-            goto cleanup;
-        }
-
-        distance_codes = malloc(sizeof(huffman_code_t) * DEFLATE_DISTANCE_SIZE);
-        if (NULL == distance_codes) {
-            FATAL("failed to allocated memory for distance code's len type");
-            goto cleanup;
-        }
-        memset(distance_codes, 0, sizeof(huffman_code_t) * DEFLATE_DISTANCE_SIZE);
-        build_huffman_len_code(distance_root, distance_codes, 0);
-
-        distance_active_codes =
-            malloc(sizeof(huffman_code_t) * init_leaves->distance_active_symbol);
-        if (NULL == distance_active_codes) {
-            goto cleanup;
-        }
-        for (uint16_t i = 0, j = 0; i < DEFLATE_DISTANCE_SIZE; i++) {
-            if (distance_codes[i].length != 0) {
-                distance_active_codes[j++] = distance_codes[i];
-            }
-        }
-
-        sort_active_codes(distance_active_codes, init_leaves->distance_active_symbol);
-        generate_huffman_code(distance_active_codes, init_leaves->distance_active_symbol);
-    }
-
-    min_heap_literal_len = min_heap_create(init_leaves->literal_len_active_symbol);
-    if (NULL == min_heap_literal_len) {
-        goto cleanup;
-    }
-
-    if (!fill_min_heap(min_heap_literal_len, init_leaves->literal_len_leaves,
-                       init_leaves->literal_len_active_symbol))
-        goto cleanup;
-    literal_len_root = construct_huffman_tree(min_heap_literal_len);
-    if (NULL == literal_len_root) {
-        goto cleanup;
-    }
-
-    literal_len_codes = malloc(sizeof(huffman_code_t) * DEFLATE_LITERAL_LENGTH_SIZE);
-    if (NULL == literal_len_codes) {
-        FATAL("failed to allocated memory for literal and length code's len type");
-        goto cleanup;
-    }
-    memset(literal_len_codes, 0, sizeof(huffman_code_t) * DEFLATE_LITERAL_LENGTH_SIZE);
-    build_huffman_len_code(literal_len_root, literal_len_codes, 0);
-    literal_len_active_codes =
-        malloc(sizeof(huffman_code_t) * init_leaves->literal_len_active_symbol);
-    if (NULL == literal_len_active_codes) {
-        goto cleanup;
-    }
-
-    for (uint16_t i = 0, j = 0; i < DEFLATE_LITERAL_LENGTH_SIZE; i++) {
-        if (literal_len_codes[i].length != 0) {
-            literal_len_active_codes[j++] = literal_len_codes[i];
-        }
-    }
-    sort_active_codes(literal_len_active_codes, init_leaves->literal_len_active_symbol);
-    generate_huffman_code(literal_len_active_codes, init_leaves->literal_len_active_symbol);
-
-    canonical_code.literal_len      = literal_len_active_codes;
-    canonical_code.literal_len_size = init_leaves->literal_len_active_symbol;
-    canonical_code.distance         = distance_active_codes;
-    canonical_code.distance_size    = init_leaves->distance_active_symbol;
-    canonical_code.status           = true;
-cleanup:
-    if (init_leaves) {
-        for (uint16_t i = 0; i < init_leaves->literal_len_active_symbol; i++) {
-            if (init_leaves->literal_len_leaves[i])
-                destroy_huffman_tree(init_leaves->literal_len_leaves[i]);
-        }
-        for (uint8_t i = 0; i < init_leaves->distance_active_symbol; i++) {
-            if (init_leaves->distance_leaves[i])
-                destroy_huffman_tree(init_leaves->distance_leaves[i]);
-        }
-        free(init_leaves->distance_leaves);
-        free(init_leaves->literal_len_leaves);
-        free(init_leaves);
-    }
-    if (min_heap_literal_len) {
-        for (uint32_t i = 0; i < min_heap_literal_len->size; i++) {
-            destroy_huffman_tree(min_heap_literal_len->huffman_nodes[i]);
-        }
-        min_heap_destroy(min_heap_literal_len);
-    }
-    if (min_heap_distance) {
-        for (uint32_t i = 0; i < min_heap_distance->size; i++) {
-            destroy_huffman_tree(min_heap_distance->huffman_nodes[i]);
-        }
-        min_heap_destroy(min_heap_distance);
-    }
-    if (literal_len_root)
-        destroy_huffman_tree(literal_len_root);
-    if (distance_root)
-        destroy_huffman_tree(distance_root);
-    if (!canonical_code.status) {
-        free(literal_len_active_codes);
-        free(distance_active_codes);
-    }
-    free(frequency.literal_length_frequency);
-    free(frequency.distance_frequency);
-    free(literal_len_codes);
-    free(distance_codes);
-
-    return canonical_code;
+    result.literal_len      = ll.codes;
+    result.literal_len_size = ll.size;
+    result.distance         = dist.codes;
+    result.distance_size    = dist.size;
+    result.status           = true;
+    return result;
 }
 
 void free_huffman(canonical_huffman_code huffman_code) {
@@ -189,6 +65,78 @@ void print_huffman(const canonical_huffman_code *code) {
     }
 }
 
+huffman_code_set_t build_canonical_huffman(const uint32_t *frequency, uint16_t alphabet_size) {
+    huffman_code_set_t result = {.codes = NULL, .size = 0, .status = false};
+    if (NULL == frequency || alphabet_size == 0) return result;
+
+    huffman_tree_t **leaves = malloc(sizeof(huffman_tree_t *) * alphabet_size);
+    if (!leaves) return result;
+
+    uint16_t n = 0;
+    for (uint16_t s = 0; s < alphabet_size; s++) {
+        if (frequency[s] > 0) {
+            huffman_tree_t *leaf = malloc(sizeof(huffman_tree_t));
+            if (!leaf) {
+                for (uint16_t i = 0; i < n; i++) free(leaves[i]);
+                free(leaves);
+                return result;
+            }
+            leaf->frequency = frequency[s];
+            leaf->symbol    = s;
+            leaf->left = leaf->right = NULL;
+            leaves[n++] = leaf;
+        }
+    }
+
+    if (n == 0) { free(leaves); result.status = true; return result; }
+
+    huffman_code_t *active = malloc(sizeof(huffman_code_t) * n);
+    if (!active) { for (uint16_t i = 0; i < n; i++) free(leaves[i]); free(leaves); return result; }
+
+    if (n == 1) {
+        active[0] = (huffman_code_t){.length = 1, .symbol = leaves[0]->symbol, .code = 0};
+        free(leaves[0]);
+        free(leaves);
+        result.codes = active;
+        result.size  = 1;
+        result.status = true;
+        return result;
+    }
+
+    min_heap_t *heap = min_heap_create(n);
+    if (!heap) { for (uint16_t i = 0; i < n; i++) free(leaves[i]); free(leaves); free(active); return result; }
+    for (uint16_t i = 0; i < n; i++) { min_heap_insert(heap, leaves[i]); leaves[i] = NULL; }
+    free(leaves);
+
+    huffman_tree_t *root = construct_huffman_tree(heap);
+    min_heap_destroy(heap);
+    if (!root) { free(active); return result; }
+
+    huffman_code_t *full = calloc(alphabet_size, sizeof(huffman_code_t));
+    if (!full) { free(active); destroy_huffman_tree(root); return result; }
+    build_huffman_len_code(root, full, 0);
+    destroy_huffman_tree(root);
+
+    uint16_t j = 0;
+    for (uint16_t i = 0; i < alphabet_size; i++) {
+        if (full[i].length != 0) active[j++] = full[i];
+    }
+    assert(j == n && "lost a leaf during huffman tree construction");
+    free(full);
+
+    sort_active_codes(active, n);
+    generate_huffman_code(active, n);
+
+    result.codes  = active;
+    result.size   = n;
+    result.status = true;
+    return result;
+}
+
+void free_huffman_code_set(huffman_code_set_t set) {
+    free(set.codes);
+}
+
 static void build_huffman_len_code(huffman_tree_t *root, huffman_code_t *code, uint16_t len) {
     if (NULL == root) {
         return;
@@ -202,80 +150,6 @@ static void build_huffman_len_code(huffman_tree_t *root, huffman_code_t *code, u
         code[root->symbol].length = len == 0 ? 1 : len;
         code[root->symbol].symbol = root->symbol;
     }
-}
-
-static huffman_init_leaves *initialize_leaves_array_from_frequency(const frequency_t *frequency) {
-    uint16_t literal_length_active_symbol  = get_active_literal_length_symbol_count(frequency);
-    uint8_t distance_active_symbol         = get_active_distance_symbol(frequency);
-    huffman_init_leaves *leaves            = NULL;
-    uint16_t literal_length_index          = 0;
-    uint16_t distance_index                = 0;
-    huffman_tree_t **literal_length_leaves = NULL;
-    huffman_tree_t **distance_leaves       = NULL;
-
-    if (literal_length_active_symbol > 0) {
-        literal_length_leaves = malloc(sizeof(huffman_tree_t *) * literal_length_active_symbol);
-        if (NULL == literal_length_leaves) {
-            FATAL("failed to allocated memory for literal length leaves");
-            return NULL;
-        }
-    }
-    if (distance_active_symbol > 0) {
-        distance_leaves = malloc(sizeof(huffman_tree_t *) * distance_active_symbol);
-        if (NULL == distance_leaves) {
-            FATAL("failed to allocated memory for distance leaves");
-            free(literal_length_leaves);
-            return NULL;
-        }
-    }
-    for (uint16_t i = 0; i < DEFLATE_LITERAL_LENGTH_SIZE; i++) {
-        if (frequency->literal_length_frequency[i] != 0) {
-            literal_length_leaves[literal_length_index] = malloc(sizeof(huffman_tree_t));
-            if (NULL == literal_length_leaves[literal_length_index]) {
-                goto error;
-            }
-            literal_length_leaves[literal_length_index]->frequency =
-                frequency->literal_length_frequency[i];
-            literal_length_leaves[literal_length_index]->symbol = i;
-            literal_length_leaves[literal_length_index]->left   = NULL;
-            literal_length_leaves[literal_length_index]->right  = NULL;
-            ++literal_length_index;
-        }
-    }
-    for (uint8_t i = 0; i < DEFLATE_DISTANCE_SIZE; i++) {
-        if (frequency->distance_frequency[i] != 0) {
-            distance_leaves[distance_index] = malloc(sizeof(huffman_tree_t));
-            if (NULL == distance_leaves[distance_index]) {
-                goto error;
-            }
-            distance_leaves[distance_index]->frequency = frequency->distance_frequency[i];
-            distance_leaves[distance_index]->symbol    = i;
-            distance_leaves[distance_index]->left      = NULL;
-            distance_leaves[distance_index]->right     = NULL;
-            ++distance_index;
-        }
-    }
-    leaves = malloc(sizeof(huffman_init_leaves));
-    if (NULL == leaves) {
-        FATAL("failed to allocate memory for initial huffman leaves");
-        goto error;
-    }
-    leaves->literal_len_leaves        = literal_length_leaves;
-    leaves->literal_len_active_symbol = literal_length_active_symbol;
-    leaves->distance_leaves           = distance_leaves;
-    leaves->distance_active_symbol    = distance_active_symbol;
-    return leaves;
-
-error:
-    for (uint16_t i = 0; i < distance_index; i++) {
-        free(distance_leaves[i]);
-    }
-    free(distance_leaves);
-    for (uint16_t i = 0; i < literal_length_index; i++) {
-        free(literal_length_leaves[i]);
-    }
-    free(literal_length_leaves);
-    return NULL;
 }
 
 static frequency_t initialize_frequency_table(deflate_lz77_stream_t *deflate_stream) {
@@ -313,26 +187,6 @@ static frequency_t initialize_frequency_table(deflate_lz77_stream_t *deflate_str
     return frequency;
 }
 
-static uint16_t get_active_literal_length_symbol_count(const frequency_t *frequency) {
-    uint16_t literal_length_active_symbol = 0;
-    for (uint16_t i = 0; i < DEFLATE_LITERAL_LENGTH_SIZE; i++) {
-        if (frequency->literal_length_frequency[i] != 0) {
-            ++literal_length_active_symbol;
-        }
-    }
-    return literal_length_active_symbol;
-}
-
-static uint8_t get_active_distance_symbol(const frequency_t *frequency) {
-    uint8_t distance_active_symbol = 0;
-    for (uint8_t i = 0; i < DEFLATE_DISTANCE_SIZE; i++) {
-        if (frequency->distance_frequency[i] != 0) {
-            ++distance_active_symbol;
-        }
-    }
-    return distance_active_symbol;
-}
-
 void destroy_huffman_tree(huffman_tree_t *root) {
     if (NULL == root) {
         return;
@@ -340,15 +194,6 @@ void destroy_huffman_tree(huffman_tree_t *root) {
     destroy_huffman_tree(root->left);
     destroy_huffman_tree(root->right);
     free(root);
-}
-
-static bool fill_min_heap(min_heap_t *heap, huffman_tree_t **node, uint16_t active_size) {
-    for (uint16_t i = 0; i < active_size; i++) {
-        if (!min_heap_insert(heap, node[i]))
-            return false;
-        node[i] = NULL;
-    }
-    return true;
 }
 
 static huffman_tree_t *construct_huffman_tree(min_heap_t *heap) {
