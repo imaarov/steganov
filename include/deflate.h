@@ -22,8 +22,27 @@
 #define DEFLATE_H
 
 #include "bitstream.h"
-#define FIX_SIZE_BLOCK_SIZE     32768
-#define UNCOMPRESSED_BLOCK_SIZE 65535
+#include <stdint.h>
+
+#define FIX_SIZE_BLOCK_SIZE       32768
+#define UNCOMPRESSED_BLOCK_SIZE   65535
+#define CODE_LENGTH_ALPHABET_SIZE 19
+
+static const uint8_t CLC_ORDER[CODE_LENGTH_ALPHABET_SIZE] = {
+    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
+};
+
+typedef struct {
+   uint8_t symbol;
+  uint8_t extra_bits;
+  uint16_t extra_value;
+} cl_rle_symbol_t;
+
+typedef struct {
+   cl_rle_symbol_t *items;
+   uint32_t count;
+   uint32_t capacity;
+} cl_rle_stream_t;
 
 typedef enum {
     BFINAL_LAST_BLOCK     = 1,
