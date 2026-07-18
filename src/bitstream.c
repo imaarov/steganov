@@ -88,11 +88,11 @@ void bitstream_write_bits_msb(bitstream_t *stream, uint32_t value, uint8_t count
             stream->data[stream->byte_pos] |= (uint8_t)(1u << stream->bit_pos);
         }
 
-        if (stream->bit_pos == 0) {
-            stream->bit_pos = 7;
+        if (stream->bit_pos == 7) {
+            stream->bit_pos = 0;
             stream->byte_pos++;
         } else {
-            stream->bit_pos--;
+            stream->bit_pos++;
         }
     }
 }
