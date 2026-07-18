@@ -17,9 +17,10 @@ static void sort_active_codes(huffman_code_t *, uint32_t);
 static void generate_huffman_code(huffman_code_t *, uint32_t);
 
 canonical_huffman_code build_huffman_tree(deflate_lz77_stream_t *deflate) {
-    canonical_huffman_code result = { .literal_len = NULL, .distance = NULL, .status = false };
+    canonical_huffman_code result = {.literal_len = NULL, .distance = NULL, .status = false};
 
-    if (!deflate) return result;
+    if (!deflate)
+        return result;
 
     frequency_t freq = initialize_frequency_table(deflate);
     if (!freq.literal_length_frequency || !freq.distance_frequency) {
@@ -28,10 +29,10 @@ canonical_huffman_code build_huffman_tree(deflate_lz77_stream_t *deflate) {
         return result;
     }
 
-    huffman_code_set_t ll = build_canonical_huffman(freq.literal_length_frequency,
-                                                    DEFLATE_LITERAL_LENGTH_SIZE);
-    huffman_code_set_t dist = build_canonical_huffman(freq.distance_frequency,
-                                                      DEFLATE_DISTANCE_SIZE);
+    huffman_code_set_t ll =
+        build_canonical_huffman(freq.literal_length_frequency, DEFLATE_LITERAL_LENGTH_SIZE);
+    huffman_code_set_t dist =
+        build_canonical_huffman(freq.distance_frequency, DEFLATE_DISTANCE_SIZE);
 
     free(freq.literal_length_frequency);
     free(freq.distance_frequency);
@@ -67,59 +68,88 @@ void print_huffman(const canonical_huffman_code *code) {
 
 huffman_code_set_t build_canonical_huffman(const uint32_t *frequency, uint16_t alphabet_size) {
     huffman_code_set_t result = {.codes = NULL, .size = 0, .status = false};
-    if (NULL == frequency || alphabet_size == 0) return result;
+    if (NULL == frequency || alphabet_size == 0)
+        return result;
 
     huffman_tree_t **leaves = malloc(sizeof(huffman_tree_t *) * alphabet_size);
-    if (!leaves) return result;
+    if (!leaves)
+        return result;
 
     uint16_t n = 0;
     for (uint16_t s = 0; s < alphabet_size; s++) {
         if (frequency[s] > 0) {
             huffman_tree_t *leaf = malloc(sizeof(huffman_tree_t));
             if (!leaf) {
-                for (uint16_t i = 0; i < n; i++) free(leaves[i]);
+                for (uint16_t i = 0; i < n; i++)
+                    free(leaves[i]);
                 free(leaves);
                 return result;
             }
             leaf->frequency = frequency[s];
             leaf->symbol    = s;
             leaf->left = leaf->right = NULL;
-            leaves[n++] = leaf;
+            leaves[n++]              = leaf;
         }
     }
 
-    if (n == 0) { free(leaves); result.status = true; return result; }
+    if (n == 0) {
+        free(leaves);
+        result.status = true;
+        return result;
+    }
 
     huffman_code_t *active = malloc(sizeof(huffman_code_t) * n);
-    if (!active) { for (uint16_t i = 0; i < n; i++) free(leaves[i]); free(leaves); return result; }
+    if (!active) {
+        for (uint16_t i = 0; i < n; i++)
+            free(leaves[i]);
+        free(leaves);
+        return result;
+    }
 
     if (n == 1) {
         active[0] = (huffman_code_t){.length = 1, .symbol = leaves[0]->symbol, .code = 0};
         free(leaves[0]);
         free(leaves);
-        result.codes = active;
-        result.size  = 1;
+        result.codes  = active;
+        result.size   = 1;
         result.status = true;
         return result;
     }
 
     min_heap_t *heap = min_heap_create(n);
-    if (!heap) { for (uint16_t i = 0; i < n; i++) free(leaves[i]); free(leaves); free(active); return result; }
-    for (uint16_t i = 0; i < n; i++) { min_heap_insert(heap, leaves[i]); leaves[i] = NULL; }
+    if (!heap) {
+        for (uint16_t i = 0; i < n; i++)
+            free(leaves[i]);
+        free(leaves);
+        free(active);
+        return result;
+    }
+    for (uint16_t i = 0; i < n; i++) {
+        min_heap_insert(heap, leaves[i]);
+        leaves[i] = NULL;
+    }
     free(leaves);
 
     huffman_tree_t *root = construct_huffman_tree(heap);
     min_heap_destroy(heap);
-    if (!root) { free(active); return result; }
+    if (!root) {
+        free(active);
+        return result;
+    }
 
     huffman_code_t *full = calloc(alphabet_size, sizeof(huffman_code_t));
-    if (!full) { free(active); destroy_huffman_tree(root); return result; }
+    if (!full) {
+        free(active);
+        destroy_huffman_tree(root);
+        return result;
+    }
     build_huffman_len_code(root, full, 0);
     destroy_huffman_tree(root);
 
     uint16_t j = 0;
     for (uint16_t i = 0; i < alphabet_size; i++) {
-        if (full[i].length != 0) active[j++] = full[i];
+        if (full[i].length != 0)
+            active[j++] = full[i];
     }
     assert(j == n && "lost a leaf during huffman tree construction");
     free(full);
@@ -133,9 +163,7 @@ huffman_code_set_t build_canonical_huffman(const uint32_t *frequency, uint16_t a
     return result;
 }
 
-void free_huffman_code_set(huffman_code_set_t set) {
-    free(set.codes);
-}
+void free_huffman_code_set(huffman_code_set_t set) { free(set.codes); }
 
 static void build_huffman_len_code(huffman_tree_t *root, huffman_code_t *code, uint16_t len) {
     if (NULL == root) {

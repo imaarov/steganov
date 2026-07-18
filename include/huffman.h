@@ -37,7 +37,7 @@ typedef struct {
 typedef struct {
     huffman_code_t *codes;
     uint16_t size;
-    bool  status;
+    bool status;
 } huffman_code_set_t;
 
 canonical_huffman_code build_huffman_tree(deflate_lz77_stream_t *deflate);
