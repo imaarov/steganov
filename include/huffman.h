@@ -45,4 +45,5 @@ void free_huffman(canonical_huffman_code code);
 void free_huffman_code_set(huffman_code_set_t set);
 void print_huffman(const canonical_huffman_code *code);
 huffman_code_set_t build_canonical_huffman(const uint32_t *frequency, uint16_t alphabet_size);
+
 #endif
