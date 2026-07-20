@@ -91,7 +91,12 @@ make test
 run test
 ```bash
 make run-test
+# or
 ./bin/test_runner
+```
+decode and test the expected string for encoded deflate string
+```bash
+./tools/validate_deflate.py
 ```
 
 ### Supported media
@@ -114,11 +119,10 @@ make run-test
 - [x] Complete Huffman and finally generate canonical huffman table length
 - [x] Implement hashing for LZ77 find match function to improve the performance
 - [x] Add Bitstream for encoding/decoding
-- [ ] Create deflate module for connecting Huffman/LZ77/Bitstream together to make the final DEFLATE pipeline
+- [x] Create deflate module for connecting Huffman/LZ77/Bitstream together to make the final DEFLATE pipeline
 - [ ] Add custom print function for this project
-- [ ] Implement Knuth Morris Pratt algorithm
-- [ ] Implement Min heap priority for huffman algorithm
+- [x] Implement Min heap priority for huffman algorithm
 - [ ] Come up with another algorithm besides LSB
 - [ ] Implement encoding/decoding for PNG
-- [ ] Implement the Huffman algorithm for encoding/decoding, and provide the user with the option to select from the available algorithms
 - [ ] Implement a recovery mode to restore the file contents if an operation fails
+- [ ] Implement Knuth Morris Pratt algorithm
