@@ -165,6 +165,48 @@ huffman_code_set_t build_canonical_huffman(const uint32_t *frequency, uint16_t a
 
 void free_huffman_code_set(huffman_code_set_t set) { free(set.codes); }
 
+uint32_t assign_canonical_codes_from_lengths(const byte *lengths, uint32_t alphabet_size,
+                                             huffman_code_t *out_codes) {
+    uint16_t bl_count[16] = {0};
+    for (uint32_t i = 0; i < alphabet_size; i++)
+        if (lengths[i] != 0)
+            bl_count[lengths[i]]++;
+
+    uint16_t next_code[16] = {0};
+    uint32_t code          = 0;
+    bl_count[0]            = 0;
+    for (int bits = 1; bits <= 15; bits++) {
+        code            = (code + bl_count[bits - 1]) << 1;
+        next_code[bits] = (uint16_t)code;
+    }
+
+    uint32_t idx = 0;
+    for (uint32_t sym = 0; sym < alphabet_size; sym++) {
+        uint8_t len = lengths[sym];
+        if (len != 0) {
+            out_codes[idx].symbol = (uint16_t)sym;
+            out_codes[idx].length = len;
+            out_codes[idx].code   = next_code[len]++;
+            idx++;
+        }
+    }
+    return idx;
+}
+
+int decode_huffman_symbol(bitstream_t *reader, const huffman_code_t *codes, uint32_t count) {
+    uint32_t code = 0;
+    for (uint8_t len = 1; len <= 15; len++) {
+        int bit = bitstream_read_bit(reader);
+        if (bit < 0)
+            return -1;
+        code = (code << 1) | (uint32_t)bit;
+        for (uint32_t i = 0; i < count; i++)
+            if (codes[i].length == len && codes[i].code == code)
+                return codes[i].symbol;
+    }
+    return -1; // no match
+}
+
 static void build_huffman_len_code(huffman_tree_t *root, huffman_code_t *code, uint16_t len) {
     if (NULL == root) {
         return;
