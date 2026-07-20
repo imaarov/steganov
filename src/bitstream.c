@@ -22,11 +22,28 @@ void bitstream_init(bitstream_t *stream) {
     memset(stream->data, 0, stream->capacity);
     stream->bit_pos  = 0;
     stream->byte_pos = 0;
+    stream->owns_data= true;
+}
+
+void bitstream_init_from_buffer(bitstream_t *stream, const byte *data, size_t size) {
+    if (NULL == stream) {
+        FATAL("bitstream is NULL in bitstream_init_from_buffer");
+        return;
+    }
+    stream->data = (byte *)data;
+    stream->capacity = size;
+    stream->byte_pos = 0;
+    stream->bit_pos = 0;
+    stream->owns_data = false;
 }
 
 void bitstream_write_bits_lsb(bitstream_t *stream, uint32_t value, uint8_t count) {
     if (!stream || !stream->data) {
         FATAL("stream or stream data in bitstream write lsb is NULL");
+        return;
+    }
+    if (!stream->owns_data) {
+        FATAL("attempted to grow a read-only bitstream");
         return;
     }
     if (count == 0)
@@ -124,11 +141,59 @@ void bitstream_destroy(bitstream_t *stream) {
     if (NULL == stream) {
         return;
     }
-    free(stream->data);
+    if (stream->owns_data) {
+        free(stream->data);
+    }
     stream->capacity = 0;
     stream->byte_pos = 0;
     stream->bit_pos  = 0;
     stream->data     = NULL;
+    stream->owns_data = false;
+}
+
+int bitstream_read_bit(bitstream_t *stream) {
+    if (NULL == stream || NULL == stream->data) {
+        return -1;
+    }
+    if (stream->byte_pos >= stream->capacity) {
+        return -1;
+    }
+
+    int bit = (stream->data[stream->byte_pos] >> stream->bit_pos) & 1;
+    if (stream->bit_pos == 7) {
+        stream->bit_pos = 0;
+        stream->byte_pos++;
+    }else {
+        stream->bit_pos++;
+    }
+    return bit;
+}
+
+int32_t bitstream_read_bits_lsb(bitstream_t *stream, uint8_t count) {
+    if (count > 32) {
+        FATAL("count is bigger than max value");
+    }
+    uint32_t val = 0;
+    for (uint8_t i = 0; i < count; i++) {
+        int b = bitstream_read_bit(stream);
+        if (b < 0) {
+            return -1; // error in read bit function
+        }
+        val |= ((uint32_t)b) << i;
+    }
+
+    return (int32_t) val;
+}
+
+void bitstream_align_byte(bitstream_t *stream) {
+    if (NULL == stream) {
+        return;
+    }
+
+    if (stream->bit_pos != 0) {
+        stream->bit_pos = 0;
+        stream->byte_pos++;
+    }
 }
 
 static bool bitstream_grow(bitstream_t *stream) {
