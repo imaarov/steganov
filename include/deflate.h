@@ -56,6 +56,7 @@ typedef enum {
 } BTYPE;
 
 bitstream_t deflate_encode(byte *un_compressed_data, uint32_t data_len, BTYPE btype);
+byte *deflate_decode(const byte *compressed, uint32_t compressed_size, uint32_t *out_len);
 
 typedef struct {
     BFINAL bfinal;

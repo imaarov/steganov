@@ -134,16 +134,16 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
             huffman_code_t *lc = find_code(huffman_code.literal_len, huffman_code.literal_len_size,
                                            tok->length_symbol);
             bitstream_write_bits_msb(bitstream, lc->code, lc->length);
-            if (tok->length_extra_value > 0)
+            if (tok->length_extra_count > 0)
                 bitstream_write_bits_lsb(bitstream, tok->length_extra_value,
                                          tok->length_extra_count);
 
             huffman_code_t *dc =
                 find_code(huffman_code.distance, huffman_code.distance_size, tok->distance_symbol);
             bitstream_write_bits_msb(bitstream, dc->code, dc->length);
-            if (tok->distance_extra_value > 0)
+            if (tok->distance_extra_count > 0)
                 bitstream_write_bits_lsb(bitstream, tok->distance_extra_value,
-                                         tok->distance_extra_value);
+                                         tok->distance_extra_count);
 
         } else if (tok->type == EOB_TOKEN) {
             huffman_code_t *hc =
@@ -280,4 +280,259 @@ static huffman_code_t *find_code(huffman_code_t *codes, uint32_t size, uint16_t 
         if (codes[i].symbol == symbol)
             return &codes[i];
     return NULL;
+}
+
+// decode
+
+static bool out_push(byte **out, uint32_t *out_size, uint32_t *out_cap, byte b) {
+    if (*out_size == *out_cap) {
+        uint32_t new_cap = (*out_cap == 0) ? 256 : (*out_cap * 2);
+        byte *tmp        = realloc(*out, new_cap);
+        if (!tmp)
+            return false;
+        *out     = tmp;
+        *out_cap = new_cap;
+    }
+    (*out)[(*out_size)++] = b;
+    return true;
+}
+
+static const length_code_t *find_length_code_by_symbol(uint16_t symbol) {
+    for (uint8_t i = 0; i < DEFLATE_LENGTH_CODE_TABLE_SIZE; i++)
+        if (LENGTH_CODES[i].symbol == symbol)
+            return &LENGTH_CODES[i];
+    return NULL;
+}
+
+static const distance_code_t *find_distance_code_by_symbol(uint16_t symbol) {
+    for (uint8_t i = 0; i < DEFLATE_DISTANCE_CODE_TABLE_SIZE; i++)
+        if (DISTANCE_CODES[i].symbol == symbol)
+            return &DISTANCE_CODES[i];
+    return NULL;
+}
+
+static bool decode_stored_block(bitstream_t *reader, byte **out, uint32_t *out_size,
+                                uint32_t *out_cap) {
+    bitstream_align_byte(reader);
+    if (reader->byte_pos + 4 > reader->capacity)
+        return false;
+
+    uint16_t len =
+        (uint16_t)(reader->data[reader->byte_pos] | (reader->data[reader->byte_pos + 1] << 8));
+    uint16_t nlen =
+        (uint16_t)(reader->data[reader->byte_pos + 2] | (reader->data[reader->byte_pos + 3] << 8));
+    reader->byte_pos += 4;
+
+    if ((uint16_t)(~len & 0xFFFF) != nlen) {
+        FATAL("stored block LEN/NLEN mismatch");
+        return false;
+    }
+    if (reader->byte_pos + len > reader->capacity)
+        return false;
+
+    for (uint16_t i = 0; i < len; i++)
+        if (!out_push(out, out_size, out_cap, reader->data[reader->byte_pos + i]))
+            return false;
+    reader->byte_pos += len;
+    return true;
+}
+
+static bool decode_huffman_body(bitstream_t *reader, const huffman_code_t *ll_codes,
+                                uint32_t ll_count, const huffman_code_t *dist_codes,
+                                uint32_t dist_count, byte **out, uint32_t *out_size,
+                                uint32_t *out_cap) {
+    while (1) {
+        int sym = decode_huffman_symbol(reader, ll_codes, ll_count);
+        if (sym < 0)
+            return false;
+
+        if (sym < 256) {
+            if (!out_push(out, out_size, out_cap, (byte)sym))
+                return false;
+
+        } else if (sym == EOB) {
+            return true;
+
+        } else {
+            const length_code_t *lc = find_length_code_by_symbol((uint16_t)sym);
+            if (!lc)
+                return false;
+            int32_t extra = bitstream_read_bits_lsb(reader, lc->extra_bits);
+            if (extra < 0)
+                return false;
+            uint32_t length = lc->min_length + (uint32_t)extra;
+
+            int dsym = decode_huffman_symbol(reader, dist_codes, dist_count);
+            if (dsym < 0)
+                return false;
+            const distance_code_t *dc = find_distance_code_by_symbol((uint16_t)dsym);
+            if (!dc)
+                return false;
+            int32_t dextra = bitstream_read_bits_lsb(reader, dc->extra_bits);
+            if (dextra < 0)
+                return false;
+            uint32_t distance = dc->min_length + (uint32_t)dextra;
+
+            if (distance > *out_size) {
+                FATAL("back-reference distance exceeds decoded output so far");
+                return false;
+            }
+            uint32_t start = *out_size - distance;
+            for (uint32_t k = 0; k < length; k++)
+                if (!out_push(out, out_size, out_cap, (*out)[start + k]))
+                    return false;
+        }
+    }
+}
+
+static bool decode_fixed_block(bitstream_t *reader, byte **out, uint32_t *out_size,
+                               uint32_t *out_cap) {
+    byte ll_lengths[288];
+    for (int i = 0; i <= 143; i++)
+        ll_lengths[i] = 8;
+    for (int i = 144; i <= 255; i++)
+        ll_lengths[i] = 9;
+    for (int i = 256; i <= 279; i++)
+        ll_lengths[i] = 7;
+    for (int i = 280; i <= 287; i++)
+        ll_lengths[i] = 8;
+    huffman_code_t ll_codes[288];
+    uint32_t ll_count = assign_canonical_codes_from_lengths(ll_lengths, 288, ll_codes);
+
+    byte dist_lengths[30];
+    for (int i = 0; i < 30; i++)
+        dist_lengths[i] = 5;
+    huffman_code_t dist_codes[30];
+    uint32_t dist_count = assign_canonical_codes_from_lengths(dist_lengths, 30, dist_codes);
+
+    return decode_huffman_body(reader, ll_codes, ll_count, dist_codes, dist_count, out, out_size,
+                               out_cap);
+}
+
+static bool decode_dynamic_block(bitstream_t *reader, byte **out, uint32_t *out_size,
+                                 uint32_t *out_cap) {
+    int32_t hlit_raw  = bitstream_read_bits_lsb(reader, 5);
+    int32_t hdist_raw = bitstream_read_bits_lsb(reader, 5);
+    int32_t hclen_raw = bitstream_read_bits_lsb(reader, 4);
+    if (hlit_raw < 0 || hdist_raw < 0 || hclen_raw < 0)
+        return false;
+
+    uint32_t hlit_count  = (uint32_t)hlit_raw + 257;
+    uint32_t hdist_count = (uint32_t)hdist_raw + 1;
+    uint32_t hclen_count = (uint32_t)hclen_raw + 4;
+
+    byte cl_lengths[CODE_LENGTH_ALPHABET_SIZE] = {0};
+    for (uint32_t i = 0; i < hclen_count; i++) {
+        int32_t v = bitstream_read_bits_lsb(reader, 3);
+        if (v < 0)
+            return false;
+        cl_lengths[CLC_ORDER[i]] = (byte)v;
+    }
+    huffman_code_t cl_codes[CODE_LENGTH_ALPHABET_SIZE];
+    uint32_t cl_code_count =
+        assign_canonical_codes_from_lengths(cl_lengths, CODE_LENGTH_ALPHABET_SIZE, cl_codes);
+
+    uint32_t total_lengths = hlit_count + hdist_count;
+    byte *combined         = calloc(total_lengths, 1);
+    if (!combined)
+        return false;
+
+    uint32_t pos = 0;
+    while (pos < total_lengths) {
+        int sym = decode_huffman_symbol(reader, cl_codes, cl_code_count);
+        if (sym < 0) {
+            free(combined);
+            return false;
+        }
+
+        if (sym <= 15) {
+            combined[pos++] = (byte)sym;
+        } else if (sym == 16) {
+            int32_t extra = bitstream_read_bits_lsb(reader, 2);
+            if (extra < 0 || pos == 0) {
+                free(combined);
+                return false;
+            }
+            byte prev = combined[pos - 1];
+            for (int32_t k = 0; k < extra + 3 && pos < total_lengths; k++)
+                combined[pos++] = prev;
+        } else if (sym == 17) {
+            int32_t extra = bitstream_read_bits_lsb(reader, 3);
+            if (extra < 0) {
+                free(combined);
+                return false;
+            }
+            for (int32_t k = 0; k < extra + 3 && pos < total_lengths; k++)
+                combined[pos++] = 0;
+        } else if (sym == 18) {
+            int32_t extra = bitstream_read_bits_lsb(reader, 7);
+            if (extra < 0) {
+                free(combined);
+                return false;
+            }
+            for (int32_t k = 0; k < extra + 11 && pos < total_lengths; k++)
+                combined[pos++] = 0;
+        } else {
+            free(combined);
+            return false;
+        }
+    }
+
+    byte *ll_lengths   = combined;
+    byte *dist_lengths = combined + hlit_count;
+
+    huffman_code_t *ll_codes = malloc(sizeof(huffman_code_t) * hlit_count);
+    uint32_t ll_count = assign_canonical_codes_from_lengths(ll_lengths, hlit_count, ll_codes);
+    huffman_code_t *dist_codes = malloc(sizeof(huffman_code_t) * hdist_count);
+    uint32_t dist_count =
+        assign_canonical_codes_from_lengths(dist_lengths, hdist_count, dist_codes);
+
+    bool ok = decode_huffman_body(reader, ll_codes, ll_count, dist_codes, dist_count, out, out_size,
+                                  out_cap);
+
+    free(ll_codes);
+    free(dist_codes);
+    free(combined);
+    return ok;
+}
+
+byte *deflate_decode(const byte *compressed, uint32_t compressed_size, uint32_t *out_len) {
+    bitstream_t reader;
+    bitstream_init_from_buffer(&reader, compressed, compressed_size);
+
+    byte *out         = NULL;
+    uint32_t out_size = 0, out_cap = 0;
+
+    bool final = false;
+    while (!final) {
+        int bfinal    = bitstream_read_bit(&reader);
+        int32_t btype = bitstream_read_bits_lsb(&reader, 2);
+        if (bfinal < 0 || btype < 0) {
+            free(out);
+            return NULL;
+        }
+        final = (bfinal == 1);
+
+        bool ok;
+        if (btype == BTYPE_NO_COMPRESSION)
+            ok = decode_stored_block(&reader, &out, &out_size, &out_cap);
+        else if (btype == BTYPE_FIXED_HUFFMAN)
+            ok = decode_fixed_block(&reader, &out, &out_size, &out_cap);
+        else if (btype == BTYPE_DYNAMIC_HUFFMAN)
+            ok = decode_dynamic_block(&reader, &out, &out_size, &out_cap);
+        else {
+            FATAL("invalid BTYPE in compressed stream");
+            free(out);
+            return NULL;
+        }
+
+        if (!ok) {
+            FATAL("failed to decode deflate block");
+            free(out);
+            return NULL;
+        }
+    }
+
+    *out_len = out_size;
+    return out;
 }
