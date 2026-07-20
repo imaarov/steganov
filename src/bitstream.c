@@ -20,9 +20,9 @@ void bitstream_init(bitstream_t *stream) {
         return;
     }
     memset(stream->data, 0, stream->capacity);
-    stream->bit_pos  = 0;
-    stream->byte_pos = 0;
-    stream->owns_data= true;
+    stream->bit_pos   = 0;
+    stream->byte_pos  = 0;
+    stream->owns_data = true;
 }
 
 void bitstream_init_from_buffer(bitstream_t *stream, const byte *data, size_t size) {
@@ -30,10 +30,10 @@ void bitstream_init_from_buffer(bitstream_t *stream, const byte *data, size_t si
         FATAL("bitstream is NULL in bitstream_init_from_buffer");
         return;
     }
-    stream->data = (byte *)data;
-    stream->capacity = size;
-    stream->byte_pos = 0;
-    stream->bit_pos = 0;
+    stream->data      = (byte *)data;
+    stream->capacity  = size;
+    stream->byte_pos  = 0;
+    stream->bit_pos   = 0;
     stream->owns_data = false;
 }
 
@@ -144,10 +144,10 @@ void bitstream_destroy(bitstream_t *stream) {
     if (stream->owns_data) {
         free(stream->data);
     }
-    stream->capacity = 0;
-    stream->byte_pos = 0;
-    stream->bit_pos  = 0;
-    stream->data     = NULL;
+    stream->capacity  = 0;
+    stream->byte_pos  = 0;
+    stream->bit_pos   = 0;
+    stream->data      = NULL;
     stream->owns_data = false;
 }
 
@@ -163,7 +163,7 @@ int bitstream_read_bit(bitstream_t *stream) {
     if (stream->bit_pos == 7) {
         stream->bit_pos = 0;
         stream->byte_pos++;
-    }else {
+    } else {
         stream->bit_pos++;
     }
     return bit;
@@ -182,7 +182,7 @@ int32_t bitstream_read_bits_lsb(bitstream_t *stream, uint8_t count) {
         val |= ((uint32_t)b) << i;
     }
 
-    return (int32_t) val;
+    return (int32_t)val;
 }
 
 void bitstream_align_byte(bitstream_t *stream) {
