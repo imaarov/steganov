@@ -73,8 +73,7 @@ void test_deflate_round_trip() {
         memcpy(buf, "PATTERN1", 8);
         for (uint32_t i = 8; i < gap; i++)
             buf[i] = (byte)('a' + (i % 26));
-        memcpy(buf + gap, "PATTERN1",
-               8);
+        memcpy(buf + gap, "PATTERN1", 8);
         assert_round_trip("long_distance", buf, n, BTYPE_DYNAMIC_HUFFMAN);
         free(buf);
     }

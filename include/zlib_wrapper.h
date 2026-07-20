@@ -4,7 +4,7 @@
 #include "utils.h"
 #include <stdint.h>
 
-#define ZLIB_HEADER_SIZE  2  // CMG + FLG
+#define ZLIB_HEADER_SIZE  2 // CMG + FLG
 #define ZLIB_ADLER32_SIZE 4
 #define ZLIB_CM_DEFLATE   8
 

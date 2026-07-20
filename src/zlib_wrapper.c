@@ -1,6 +1,6 @@
 #include "../include/zlib_wrapper.h"
-#include "../include/deflate.h"
 #include "../include/adler32.h"
+#include "../include/deflate.h"
 #include "utils.h"
 #include <stdlib.h>
 
@@ -39,17 +39,15 @@ byte *zlib_decode(const byte *data, uint32_t size, uint32_t *decoded_size) {
     uint32_t deflate_size      = size - ZLIB_HEADER_SIZE - ZLIB_ADLER32_SIZE;
 
     uint32_t out_len = 0;
-    byte *decoded = deflate_decode(deflate_stream, deflate_size, &out_len);
+    byte *decoded    = deflate_decode(deflate_stream, deflate_size, &out_len);
     if (NULL == decoded) {
         FATAL("zlib_decode : deflate_decode failed");
         return NULL;
     }
 
     const byte *adler_bytes = data + size - ZLIB_ADLER32_SIZE;
-    uint32_t stored_adler = ((uint32_t)adler_bytes[0] << 24) |
-                            ((uint32_t)adler_bytes[1] << 16) |
-                            ((uint32_t)adler_bytes[2] << 8)  |
-                            ((uint32_t)adler_bytes[3]);
+    uint32_t stored_adler   = ((uint32_t)adler_bytes[0] << 24) | ((uint32_t)adler_bytes[1] << 16) |
+                            ((uint32_t)adler_bytes[2] << 8) | ((uint32_t)adler_bytes[3]);
 
     uint32_t computed_adler = adler32(decoded, out_len);
 
