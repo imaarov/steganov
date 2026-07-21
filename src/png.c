@@ -281,6 +281,8 @@ static bool read_ihdr_chunk(FILE *file) {
     if (decimal_ihdr_crc != crc) {
         FATAL("Calculated CRC checksum is not the same as the actual CRC in the png");
         return false;
+    }else {
+        DEBUG("CRC CHECKED");
     }
     return true;
 }
