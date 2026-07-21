@@ -31,7 +31,7 @@ typedef struct {
     byte gap_pad[3];
 } PNGIHDRHeader;
 
-bool encode_png(FILE *file, char *secretMessage);
+bool encode_png(FILE *file, FILE *out_file, char *secretMessage);
 char *decode_png(FILE *file);
 
 #endif

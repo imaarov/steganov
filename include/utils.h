@@ -29,6 +29,7 @@ typedef unsigned char byte;
 char *get_file_extension(const char *file_name);
 char *get_file_name();
 char *get_secret();
+char *get_output_file_name();
 
 uint32_t hexa_to_decimal(const Endian endian, const byte *hexa, const unsigned short size);
 

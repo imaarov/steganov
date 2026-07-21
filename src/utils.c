@@ -1,11 +1,13 @@
 #include <stdint.h>
-#define MAX_FILE_NAME_LEN      255
-#define MAX_SECRET_MESSAGE_LEN 255
 #include "../include/utils.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define MAX_FILE_NAME_LEN      255
+#define MAX_SECRET_MESSAGE_LEN 255
+#define MAX_OUTPUT_FILE_NAME   255
 
 char *get_file_extension(const char *fileName) { return strchr(fileName, '.'); }
 
@@ -64,4 +66,17 @@ char *get_file_name() {
     }
     file_name[strcspn(file_name, "\r\n")] = 0;
     return file_name;
+}
+
+char *get_output_file_name() {
+    char *out_file_name = malloc(sizeof(char) * MAX_OUTPUT_FILE_NAME);
+    memset(out_file_name, 0, sizeof(char) * MAX_OUTPUT_FILE_NAME);
+    printf("enter the output file name: \n");
+    void *buff = fgets(out_file_name, MAX_OUTPUT_FILE_NAME, stdin);
+    if (buff == NULL) {
+        printf("ERROR: Failed to read user output file name\n");
+        return NULL;
+    }
+    out_file_name[strcspn(out_file_name, "\r\n")] = 0;
+    return out_file_name;
 }
