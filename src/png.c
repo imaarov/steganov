@@ -265,8 +265,10 @@ static bool read_ihdr_chunk(FILE *file) {
 
     DEBUG("IHDR chunk size: %d", ihdr_size);
     DEBUG("IHDR ID: %.4s", (char *)ihdr_header.ID);
-    DEBUG("IHDR width: %d", hexa_to_decimal(BIG_ENDIAN, ihdr_header.width, PNG_IHDR_WIDTH_FIELD_SIZE));
-    DEBUG("IHDR height: %d", hexa_to_decimal(BIG_ENDIAN, ihdr_header.height, PNG_IHDR_HEIGHT_FIELD_SIZE));
+    DEBUG("IHDR width: %d",
+          hexa_to_decimal(BIG_ENDIAN, ihdr_header.width, PNG_IHDR_WIDTH_FIELD_SIZE));
+    DEBUG("IHDR height: %d",
+          hexa_to_decimal(BIG_ENDIAN, ihdr_header.height, PNG_IHDR_HEIGHT_FIELD_SIZE));
     DEBUG("IHDR color type : %d", ihdr_header.colorType);
     DEBUG("IHDR compression type: %d", ihdr_header.compressionType);
     DEBUG("IHDR filter type: %d", ihdr_header.filterType);
@@ -281,7 +283,7 @@ static bool read_ihdr_chunk(FILE *file) {
     if (decimal_ihdr_crc != crc) {
         FATAL("Calculated CRC checksum is not the same as the actual CRC in the png");
         return false;
-    }else {
+    } else {
         DEBUG("CRC CHECKED");
     }
     return true;

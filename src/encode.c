@@ -10,12 +10,12 @@
 #include <string.h>
 
 bool encode() {
-    bool status          = false;
-    char *file_name      = get_file_name();
-    char *secret_message = get_secret();
+    bool status            = false;
+    char *file_name        = get_file_name();
+    char *secret_message   = get_secret();
     char *output_file_name = get_output_file_name();
-    FILE *file = NULL;
-    FILE *out  = NULL;
+    FILE *file             = NULL;
+    FILE *out              = NULL;
 
     if (file_name == NULL || secret_message == NULL) {
         printf("WARNING: file name or secret message should not be empty\n");

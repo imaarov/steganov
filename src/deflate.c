@@ -155,7 +155,7 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
         for (uint32_t i = 0; i < huffman_code.distance_size; i++)
             dist_lengths[huffman_code.distance[i].symbol] = (byte)huffman_code.distance[i].length;
     } else {
-        dist_lengths[0] = 1;  // distance code length of 1 if no distances used
+        dist_lengths[0] = 1; // distance code length of 1 if no distances used
     }
 
     // write dynamic header (HLIT, HDIST, HCLEN ...)
@@ -194,7 +194,6 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
             bitstream_write_bits_msb(bitstream, hc->code, hc->length);
         }
     }
-
 
     free_lz77(lz_stream);
     free_deflate_lz77_stream(deflate_lz77_stream);
