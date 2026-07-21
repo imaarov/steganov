@@ -10,7 +10,6 @@ Written in C, without using any third party libraries.
 - [How its works](#how-its-works)
 - [Supported media](#supported-media)
 - [Commands](#commands)
-- [Todo](#todo)
 
 ## How its works
 Most of the time standard files have standard blueprint, which contains the boundaries of each section for example: header, file size, reserved, actual data (for example pixels data).
@@ -102,27 +101,5 @@ decode and test the expected string for encoded deflate string
 ### Supported media
 - BMP
 - WAV
+- PNG
 
-
-## TODO
-- [x] Get started with one file type (starting with BMP)
-- [x] Read the file size and header, and verify them
-- [x] Implement the basic steganography method (LSB) and complete the encoding process
-- [x] Implement decoding from a file
-- [x] Implement CRC(Cyclic Redundancy Codes) Algorithm
-- [x] Implement Adler32 algorithm
-- [x] Implement bitstream
-- [x] Implement Huffman algorithm
-- [x] Implement canonical huffman algorithm
-- [x] Implement LZ77 algorithm
-- [x] Make basic LZ77 algorithm compatible with DEFLATE 
-- [x] Complete Huffman and finally generate canonical huffman table length
-- [x] Implement hashing for LZ77 find match function to improve the performance
-- [x] Add Bitstream for encoding/decoding
-- [x] Create deflate module for connecting Huffman/LZ77/Bitstream together to make the final DEFLATE pipeline
-- [ ] Add custom print function for this project
-- [x] Implement Min heap priority for huffman algorithm
-- [ ] Come up with another algorithm besides LSB
-- [ ] Implement encoding/decoding for PNG
-- [ ] Implement a recovery mode to restore the file contents if an operation fails
-- [ ] Implement Knuth Morris Pratt algorithm
