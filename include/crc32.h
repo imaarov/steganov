@@ -1,5 +1,5 @@
 #ifndef CRC32
-#define crc32
+#define CRC32
 
 #include "../include/utils.h"
 #include <stddef.h>
