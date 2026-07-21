@@ -9,5 +9,6 @@
 #define ZLIB_CM_DEFLATE   8
 
 byte *zlib_decode(const byte *data, uint32_t size, uint32_t *decoded_size);
+byte *zlib_encode(const byte *data, uint32_t size, uint32_t *encoded_size);
 
 #endif

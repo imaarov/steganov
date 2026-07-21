@@ -3,6 +3,7 @@
 #include "../include/deflate.h"
 #include "utils.h"
 #include <stdlib.h>
+#include <string.h>
 
 byte *zlib_decode(const byte *data, uint32_t size, uint32_t *decoded_size) {
     if (NULL == data || NULL == decoded_size) {
@@ -59,4 +60,33 @@ byte *zlib_decode(const byte *data, uint32_t size, uint32_t *decoded_size) {
 
     *decoded_size = out_len;
     return decoded;
+}
+
+byte *zlib_encode(const byte *data, uint32_t size, uint32_t *encoded_size) {
+    bitstream_t deflate_stream = deflate_encode((byte *)data, size, BTYPE_DYNAMIC_HUFFMAN);
+    uint32_t deflate_size      = (uint32_t)bitstream_size(&deflate_stream);
+
+    uint32_t total_size = ZLIB_HEADER_SIZE + deflate_size + ZLIB_ADLER32_SIZE;
+    byte *out           = malloc(total_size);
+    if (NULL == out) {
+        FATAL("zlib_encode: allocation failed");
+        bitstream_destroy(&deflate_stream);
+        return NULL;
+    }
+
+    out[0] = 0x78; // CMF: CM=8 (deflate), CINFO=7 (32k window)
+    out[1] = 0x9C; // FLG: FDICT=0
+
+    memcpy(out + ZLIB_HEADER_SIZE, deflate_stream.data, deflate_size);
+    bitstream_destroy(&deflate_stream);
+
+    uint32_t adler  = adler32(data, size);
+    byte *adler_pos = out + ZLIB_HEADER_SIZE + deflate_size;
+    adler_pos[0]    = (byte)(adler >> 24);
+    adler_pos[1]    = (byte)(adler >> 16);
+    adler_pos[2]    = (byte)(adler >> 8);
+    adler_pos[3]    = (byte)(adler);
+
+    *encoded_size = total_size;
+    return out;
 }
