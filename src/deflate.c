@@ -1,3 +1,10 @@
+/**
+ * DEFLATE pipeline encode/decode
+ * based on RFC 1951
+ * TODO: i think we should split this into two files
+ * deflate_encode.c and deflate_decode.c
+ */
+
 #include "../include/deflate.h"
 #include "../include/bitstream.h"
 #include "deflate_lz77.h"
@@ -68,12 +75,14 @@ static void encode_deflate_no_compression(byte *data, uint32_t data_len, bitstre
 }
 
 static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstream_t *bitstream) {
+    // LZ77 compression
     lz_tokens_stream_t *lz_stream = lz_77_encode(data, data_len);
     if (NULL == lz_stream) {
         FATAL("failed to encode lz77 in deflate encoder");
         return;
     }
 
+    // make lz77 deflated version
     deflate_lz77_stream_t *deflate_lz77_stream = deflate_lz77_encode(lz_stream);
     if (NULL == deflate_lz77_stream) {
         FATAL("failed to encode deflate lz77 in deflate encoder");
@@ -81,6 +90,7 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
         return;
     }
 
+    // build canonical huffman tree
     canonical_huffman_code huffman_code = build_huffman_tree(deflate_lz77_stream);
     if (!huffman_code.status) {
         FATAL("failed to build huffman tree");
@@ -89,9 +99,40 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
         return;
     }
 
+    // DEFLATe require that all length code be <= 15
+    bool valid_lengths = true;
+    for (uint32_t i = 0; i < huffman_code.literal_len_size; i++) {
+        if (huffman_code.literal_len[i].length > 15) {
+            valid_lengths = false;
+            break;
+        }
+    }
+    if (valid_lengths) {
+        for (uint32_t i = 0; i < huffman_code.distance_size; i++) {
+            if (huffman_code.distance[i].length > 15) {
+                valid_lengths = false;
+                break;
+            }
+        }
+    }
+
+    // 5. If lengths exceed 15, fall back to uncompressed storage
+    // if length is bigger than 15, fall back for no compression method
+    if (!valid_lengths) {
+        DEBUG("huffman code lengths > 15 detected, falling back to no compression");
+        free_lz77(lz_stream);
+        free_deflate_lz77_stream(deflate_lz77_stream);
+        free_huffman(huffman_code);
+
+        encode_deflate_no_compression(data, data_len, bitstream);
+        return;
+    }
+
+    // write block header if the length are valid
     bitstream_write_bits_lsb(bitstream, BFINAL_LAST_BLOCK, 1);
     bitstream_write_bits_lsb(bitstream, BTYPE_DYNAMIC_HUFFMAN, 2);
 
+    // prepare the length arrays for dynamic header
     uint16_t max_ll_symbol = EOB;
     for (uint32_t i = 0; i < huffman_code.literal_len_size; i++)
         if (huffman_code.literal_len[i].symbol > max_ll_symbol)
@@ -114,14 +155,16 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
         for (uint32_t i = 0; i < huffman_code.distance_size; i++)
             dist_lengths[huffman_code.distance[i].symbol] = (byte)huffman_code.distance[i].length;
     } else {
-        dist_lengths[0] = 1;
+        dist_lengths[0] = 1;  // distance code length of 1 if no distances used
     }
 
+    // write dynamic header (HLIT, HDIST, HCLEN ...)
     write_dynamic_header(bitstream, &huffman_code, ll_lengths, hlit_count, dist_lengths,
                          hdist_count);
     free(ll_lengths);
     free(dist_lengths);
 
+    // poof, finally write the compressed data tokens
     for (uint32_t i = 0; i < deflate_lz77_stream->size; i++) {
         deflate_lz77_token_t *tok = &deflate_lz77_stream->tokens[i];
 
@@ -151,6 +194,7 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
             bitstream_write_bits_msb(bitstream, hc->code, hc->length);
         }
     }
+
 
     free_lz77(lz_stream);
     free_deflate_lz77_stream(deflate_lz77_stream);
@@ -210,6 +254,10 @@ static void write_dynamic_header(bitstream_t *stream, const canonical_huffman_co
 
 static bool cl_rle_push(cl_rle_stream_t *s, uint8_t symbol, uint8_t extra_bits,
                         uint16_t extra_value, uint32_t *freq) {
+    if (symbol >= CODE_LENGTH_ALPHABET_SIZE) {
+        FATAL("Invalid CL symbol %u", symbol);
+        abort();
+    }
     if (s->count == s->capacity) {
         uint32_t new_cap     = s->capacity == 0 ? 64 : s->capacity * 2;
         cl_rle_symbol_t *tmp = realloc(s->items, new_cap * sizeof(cl_rle_symbol_t));
@@ -283,7 +331,6 @@ static huffman_code_t *find_code(huffman_code_t *codes, uint32_t size, uint16_t 
 }
 
 // decode
-
 static bool out_push(byte **out, uint32_t *out_size, uint32_t *out_cap, byte b) {
     if (*out_size == *out_cap) {
         uint32_t new_cap = (*out_cap == 0) ? 256 : (*out_cap * 2);
