@@ -12,7 +12,7 @@ Unlike many similar projects, this repository intentionally avoids thrid party l
 
 ## Documentation
 
-The repository contains a dedicated **`docs/`** directory that explains the concepts behind the implementation and documents the algorithms used throughour the project.
+The repository contains a dedicated **[docs](/docs)** directory that explains the concepts behind the implementation and documents the algorithms used throughour the project.
 
 Documentation currently includes topics such as:
 
