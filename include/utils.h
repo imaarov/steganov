@@ -6,11 +6,14 @@
 
 #ifdef ENABLE_DEBUG
 #include <stdio.h>
-#define DEBUG(msg, ...) printf("[DEBUG]: %s:%d:" msg "\n", __FILE__, __LINE__, ##__VA_ARGS__)
-#define FATAL(msg, ...) printf("[ERROR]: %s:%d:" msg "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+    #define DEBUG(msg, ...) \
+        fprintf(stdout, "[DEBUG]: %s:%d:" msg "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+    #define FATAL(msg, ...) \
+        fprintf(stderr, "[ERROR]: %s:%d:" msg "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 #else
 #define DEBUG(msg, ...)
 #define FATAL(msg, ...)
+
 #endif
 
 #define MAX_FILE_NAME_LEN                255
