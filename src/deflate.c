@@ -116,7 +116,6 @@ static void encode_deflate_dynamic_huffman(byte *data, uint32_t data_len, bitstr
         }
     }
 
-    // 5. If lengths exceed 15, fall back to uncompressed storage
     // if length is bigger than 15, fall back for no compression method
     if (!valid_lengths) {
         DEBUG("huffman code lengths > 15 detected, falling back to no compression");
