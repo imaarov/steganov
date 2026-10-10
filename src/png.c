@@ -1,5 +1,6 @@
 #include "../include/png.h"
 #include "../include/crc32.h"
+#include "../include/png_filter.h"
 #include "../include/utils.h"
 #include "../include/zlib_wrapper.h"
 #include <stdbool.h>
@@ -9,15 +10,47 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define IHDR_BIT_DEPTH_OFFSET   8
+#define IHDR_COLOR_TYPE_OFFSET  9
+#define IHDR_COMPRESSION_OFFSET 10
+#define IHDR_FILTER_OFFSET      11
+#define IHDR_INTERLACE_OFFSET   12
+
+#define PNG_COLOR_TYPE_GRAY       0
+#define PNG_COLOR_TYPE_RGB        2
+#define PNG_COLOR_TYPE_PALETTE    3
+#define PNG_COLOR_TYPE_GRAY_ALPHA 4
+#define PNG_COLOR_TYPE_RGBA       6
+
+typedef struct {
+    uint32_t width;
+    uint32_t height;
+    uint32_t channels;
+    uint32_t bytes_per_sample;
+    uint32_t bpp;
+    uint32_t stride;
+    uint64_t sample_count;
+} png_info_t;
+
+typedef struct {
+    byte *raw;
+    byte *filter_types;
+} png_pixels_t;
+
 static bool png_header_is_not_valid(FILE *file);
-static bool read_ihdr_chunk(FILE *file);
+static bool read_ihdr_chunk(FILE *file, png_info_t *info);
+static bool parse_ihdr(const byte *ihdr, png_info_t *info);
 static byte *read_all_idat_data(FILE *file, uint32_t *out_size);
-static bool lsb_embed(byte *data, uint32_t data_size, const char *message);
-static char *lsb_extract(const byte *data, uint32_t data_size);
+static bool load_pixels(const byte *idat_data, uint32_t idat_size, const png_info_t *info,
+                        png_pixels_t *pixels);
+static void free_pixels(png_pixels_t *pixels);
+static uint64_t sample_offset(const png_info_t *info, uint64_t sample_index);
+static bool lsb_embed(byte *raw, const png_info_t *info, const char *message);
+static char *lsb_extract(const byte *raw, const png_info_t *info);
 static void write_be32(byte *out, uint32_t value);
 static bool write_chunk(FILE *out_file, const char *type, const byte *data, uint32_t data_len);
-static bool write_new_idat_chunk(FILE *out_file, byte *idat_data, uint32_t idat_size,
-                                 const char *secretMessage);
+static bool write_new_idat_chunk(FILE *out_file, const byte *idat_data, uint32_t idat_size,
+                                 const png_info_t *info, const char *secretMessage);
 
 bool encode_png(FILE *file, FILE *out_file, char *secretMessage) {
     if (NULL == file || NULL == out_file || NULL == secretMessage) {
@@ -47,6 +80,8 @@ bool encode_png(FILE *file, FILE *out_file, char *secretMessage) {
     byte *idat_data    = NULL;
     uint32_t idat_size = 0;
     bool idat_written  = false;
+    png_info_t info    = {0};
+    bool have_ihdr     = false;
 
     while (1) {
         byte length_bytes[PNG_LENGTH_FIELD_SIZE];
@@ -87,8 +122,20 @@ bool encode_png(FILE *file, FILE *out_file, char *secretMessage) {
             return false;
         }
 
+        bool is_ihdr = (0 == strncmp(PNG_IHDR_CHUNK_ID, (char *)type_bytes, PNG_CHUNK_ID_SIZE));
         bool is_idat = (0 == strncmp(PNG_IDAT_CHUNK_ID, (char *)type_bytes, PNG_CHUNK_ID_SIZE));
         bool is_iend = (0 == strncmp(PNG_IEND_CHUNK_ID, (char *)type_bytes, PNG_CHUNK_ID_SIZE));
+
+        if (is_ihdr) {
+            // we need the image geometry to be able to un filter the scanlines later
+            if (chunk_len != PNG_IHDR_DATA_SIZE || !parse_ihdr(chunk_data, &info)) {
+                FATAL("encode_png: invalid or unsupported IHDR chunk");
+                free(chunk_data);
+                free(idat_data);
+                return false;
+            }
+            have_ihdr = true;
+        }
 
         if (is_idat) {
             byte *grown = realloc(idat_data, idat_size + chunk_len);
@@ -106,7 +153,13 @@ bool encode_png(FILE *file, FILE *out_file, char *secretMessage) {
         }
 
         if (is_iend && !idat_written) {
-            if (!write_new_idat_chunk(out_file, idat_data, idat_size, secretMessage)) {
+            if (!have_ihdr) {
+                FATAL("encode_png: no IHDR chunk found before IEND");
+                free(chunk_data);
+                free(idat_data);
+                return false;
+            }
+            if (!write_new_idat_chunk(out_file, idat_data, idat_size, &info, secretMessage)) {
                 free(chunk_data);
                 free(idat_data);
                 return false;
@@ -141,49 +194,71 @@ char *decode_png(FILE *file) {
 
     if (png_header_is_not_valid(file))
         return NULL;
-    if (!read_ihdr_chunk(file))
+
+    png_info_t info = {0};
+    if (!read_ihdr_chunk(file, &info))
         return NULL;
 
     uint32_t idat_size = 0;
     byte *idat_data    = read_all_idat_data(file, &idat_size);
     if (NULL == idat_data || idat_size == 0) {
         FATAL("decode_png: no IDAT data found");
+        free(idat_data);
         return NULL;
     }
 
-    uint32_t decoded_size = 0;
-    byte *decoded         = zlib_decode(idat_data, idat_size, &decoded_size);
+    // the message is in the real pixel samples, so zlib decode AND un filter before reading
+    png_pixels_t pixels = {0};
+    bool loaded         = load_pixels(idat_data, idat_size, &info, &pixels);
     free(idat_data);
-    if (NULL == decoded) {
-        FATAL("decode_png: zlib_decode failed");
+    if (!loaded)
         return NULL;
-    }
 
-    char *message = lsb_extract(decoded, decoded_size);
-    free(decoded);
+    char *message = lsb_extract(pixels.raw, &info);
+    free_pixels(&pixels);
     return message;
 }
 
-static bool write_new_idat_chunk(FILE *out_file, byte *idat_data, uint32_t idat_size,
-                                 const char *secretMessage) {
-    uint32_t decoded_size = 0;
-    byte *decoded         = zlib_decode(idat_data, idat_size, &decoded_size);
-    if (NULL == decoded) {
-        FATAL("write_new_idat_chunk: failed to zlib-decode original IDAT data");
+/**
+ * re creates the IDAT chunk with the message hidden in it.
+ *
+ *   zlib decode -> UN FILTER -> embed LSBs in the raw samples -> FILTER AGAIN -> zlib encode
+ *
+ * Every scanline keeps the filter type it originally had, so the only bytes that differ from the
+ * original image (after un filtering) are the LSBs we touched on purpose.
+ */
+static bool write_new_idat_chunk(FILE *out_file, const byte *idat_data, uint32_t idat_size,
+                                 const png_info_t *info, const char *secretMessage) {
+    png_pixels_t pixels = {0};
+    if (!load_pixels(idat_data, idat_size, info, &pixels)) {
+        FATAL("write_new_idat_chunk: failed to read the original pixels");
         return false;
     }
 
-    // TODO: unfilter scanlines before embedding -- currently embedding directly
-    // into the filtered scanline bytes
+    if (!lsb_embed(pixels.raw, info, secretMessage)) {
+        free_pixels(&pixels);
+        return false;
+    }
 
-    if (!lsb_embed(decoded, decoded_size, secretMessage)) {
-        free(decoded);
+    // load_pixels already proved height * (stride + 1) fits in 32 bits
+    uint32_t filtered_size = info->height * (info->stride + PNG_FILTER_BYTE_SIZE);
+    byte *filtered         = malloc(filtered_size);
+    if (NULL == filtered) {
+        FATAL("write_new_idat_chunk: failed to allocate the filtered scanline buffer");
+        free_pixels(&pixels);
+        return false;
+    }
+    bool filtered_ok = png_filter(pixels.raw, info->height, info->stride, info->bpp,
+                                  pixels.filter_types, filtered);
+    free_pixels(&pixels);
+    if (!filtered_ok) {
+        free(filtered);
         return false;
     }
 
     uint32_t new_zlib_size = 0;
-    byte *new_zlib_data    = zlib_encode(decoded, decoded_size, &new_zlib_size);
-    free(decoded);
+    byte *new_zlib_data    = zlib_encode(filtered, filtered_size, &new_zlib_size);
+    free(filtered);
     if (NULL == new_zlib_data) {
         FATAL("write_new_idat_chunk: zlib_encode failed");
         return false;
@@ -192,6 +267,137 @@ static bool write_new_idat_chunk(FILE *out_file, byte *idat_data, uint32_t idat_
     bool ok = write_chunk(out_file, PNG_IDAT_CHUNK_ID, new_zlib_data, new_zlib_size);
     free(new_zlib_data);
     return ok;
+}
+
+/** zlib decode the concatenated IDAT payload and un filter it into raw pixel samples */
+static bool load_pixels(const byte *idat_data, uint32_t idat_size, const png_info_t *info,
+                        png_pixels_t *pixels) {
+    pixels->raw          = NULL;
+    pixels->filter_types = NULL;
+
+    uint32_t filtered_size = 0;
+    byte *filtered         = zlib_decode(idat_data, idat_size, &filtered_size);
+    if (NULL == filtered) {
+        FATAL("load_pixels: zlib_decode failed");
+        return false;
+    }
+
+    // IHDR says how many bytes the scanlines must add up to, if they don't match something is off
+    uint64_t expected_size = (uint64_t)info->height * (info->stride + PNG_FILTER_BYTE_SIZE);
+    if (filtered_size != expected_size) {
+        FATAL("load_pixels: IDAT holds %u bytes but IHDR describes %llu bytes", filtered_size,
+              (unsigned long long)expected_size);
+        free(filtered);
+        return false;
+    }
+
+    pixels->raw          = malloc((size_t)info->height * info->stride);
+    pixels->filter_types = malloc(info->height);
+    if (NULL == pixels->raw || NULL == pixels->filter_types) {
+        FATAL("load_pixels: allocation failed");
+        free(filtered);
+        free_pixels(pixels);
+        return false;
+    }
+
+    bool ok = png_unfilter(filtered, info->height, info->stride, info->bpp, pixels->raw,
+                           pixels->filter_types);
+    free(filtered);
+    if (!ok)
+        free_pixels(pixels);
+    return ok;
+}
+
+static void free_pixels(png_pixels_t *pixels) {
+    free(pixels->raw);
+    free(pixels->filter_types);
+    pixels->raw          = NULL;
+    pixels->filter_types = NULL;
+}
+
+/**
+ * validates IHDR and derives the numbers needed to walk the pixel data.
+ * anything that would make LSB embedding visible or ambiguous is rejected up front instead of
+ * silently producing a damaged image:
+ *   - palette images: the samples are palette *indices*, flipping an LSB jumps to a different
+ * colour
+ *   - bit depth < 8: several pixels are packed into one byte
+ *   - Adam7 interlacing: pixels are stored in 7 separate passes, not row by row
+ */
+static bool parse_ihdr(const byte *ihdr, png_info_t *info) {
+    uint32_t width = hexa_to_decimal(BIG_ENDIAN, ihdr, PNG_IHDR_WIDTH_FIELD_SIZE);
+    uint32_t height =
+        hexa_to_decimal(BIG_ENDIAN, ihdr + PNG_IHDR_WIDTH_FIELD_SIZE, PNG_IHDR_HEIGHT_FIELD_SIZE);
+    byte bit_depth  = ihdr[IHDR_BIT_DEPTH_OFFSET];
+    byte color_type = ihdr[IHDR_COLOR_TYPE_OFFSET];
+
+    if (0 == width || 0 == height) {
+        FATAL("IHDR: image dimensions must not be zero");
+        return false;
+    }
+    if (0 != ihdr[IHDR_COMPRESSION_OFFSET] || 0 != ihdr[IHDR_FILTER_OFFSET]) {
+        FATAL("IHDR: unknown compression or filter method");
+        return false;
+    }
+    if (0 != ihdr[IHDR_INTERLACE_OFFSET]) {
+        FATAL("IHDR: interlaced (Adam7) PNGs are not supported yet");
+        return false;
+    }
+
+    uint32_t channels = 0;
+    switch (color_type) {
+    case PNG_COLOR_TYPE_GRAY:
+        channels = 1;
+        break;
+    case PNG_COLOR_TYPE_RGB:
+        channels = 3;
+        break;
+    case PNG_COLOR_TYPE_GRAY_ALPHA:
+        channels = 2;
+        break;
+    case PNG_COLOR_TYPE_RGBA:
+        channels = 4;
+        break;
+    case PNG_COLOR_TYPE_PALETTE:
+        FATAL("IHDR: palette PNGs are not supported, LSB of an index changes the colour a lot");
+        return false;
+    default:
+        FATAL("IHDR: invalid color type %u", color_type);
+        return false;
+    }
+    if (8 != bit_depth && 16 != bit_depth) {
+        FATAL("IHDR: bit depth %u is not supported (only 8 and 16)", bit_depth);
+        return false;
+    }
+
+    info->width            = width;
+    info->height           = height;
+    info->channels         = channels;
+    info->bytes_per_sample = bit_depth / 8;
+    info->bpp              = channels * info->bytes_per_sample;
+
+    // every scanline = 1 filter byte + width * bpp bytes, the decompressed size must fit uint32
+    uint64_t stride = (uint64_t)width * info->bpp;
+    uint64_t total  = (uint64_t)height * (stride + PNG_FILTER_BYTE_SIZE);
+    if (total > UINT32_MAX) {
+        FATAL("IHDR: image is too large (%llu bytes of scanlines)", (unsigned long long)total);
+        return false;
+    }
+    info->stride       = (uint32_t)stride;
+    info->sample_count = (uint64_t)width * height * channels;
+    return true;
+}
+
+/**
+ * sample number `sample_index` (counted left to right, top to bottom, every channel) -> byte
+ * offset inside the raw buffer. For 16 bit images that is the LOW byte of the sample (samples are
+ * big-endian), so a flipped LSB changes the value by 1/65535 and not by 1/255.
+ */
+static uint64_t sample_offset(const png_info_t *info, uint64_t sample_index) {
+    uint64_t samples_per_row = (uint64_t)info->width * info->channels;
+    uint64_t row             = sample_index / samples_per_row;
+    uint64_t col             = sample_index % samples_per_row;
+    return row * info->stride + col * info->bytes_per_sample + (info->bytes_per_sample - 1);
 }
 
 static void write_be32(byte *out, uint32_t value) {
@@ -251,13 +457,19 @@ static bool png_header_is_not_valid(FILE *file) {
     return true;
 }
 
-static bool read_ihdr_chunk(FILE *file) {
+static bool read_ihdr_chunk(FILE *file, png_info_t *info) {
     PNGIHDRHeader ihdr_header;
     if (fread(&ihdr_header, sizeof(PNGIHDRHeader) - sizeof(ihdr_header.gap_pad), 1, file) != 1) {
         FATAL("failed to read the IHDR header");
         return false;
     }
-    uint32_t ihdr_size     = hexa_to_decimal(BIG_ENDIAN, ihdr_header.size, PNG_LENGTH_FIELD_SIZE);
+    uint32_t ihdr_size = hexa_to_decimal(BIG_ENDIAN, ihdr_header.size, PNG_LENGTH_FIELD_SIZE);
+    // ihdr_size feeds the CRC calculation below, never should be point past our 13 byte struct
+    if (PNG_IHDR_DATA_SIZE != ihdr_size ||
+        0 != strncmp(PNG_IHDR_CHUNK_ID, (char *)ihdr_header.ID, PNG_CHUNK_ID_SIZE)) {
+        FATAL("the first chunk is not a valid IHDR chunk");
+        return false;
+    }
     uint32_t crc_data_size = ihdr_size + PNG_CHUNK_ID_SIZE;
     byte *data             = (byte *)&ihdr_header;
     data                   = data + PNG_LENGTH_FIELD_SIZE;
@@ -286,7 +498,9 @@ static bool read_ihdr_chunk(FILE *file) {
     } else {
         DEBUG("CRC CHECKED");
     }
-    return true;
+    const byte *ihdr_payload =
+        (const byte *)&ihdr_header + PNG_LENGTH_FIELD_SIZE + PNG_CHUNK_ID_SIZE;
+    return parse_ihdr(ihdr_payload, info);
 }
 
 static byte *read_all_idat_data(FILE *file, uint32_t *out_size) {
@@ -339,40 +553,46 @@ static byte *read_all_idat_data(FILE *file, uint32_t *out_size) {
     return idat_data;
 }
 
-static bool lsb_embed(byte *data, uint32_t data_size, const char *message) {
-    uint32_t message_len = (uint32_t)strlen(message) + 1;
-    uint32_t bits_needed = message_len * 8;
+/**
+ * hide the message (plus its '\0' terminator) one bit per sample, lowest message bit first.
+ * `raw` must be UN FILTERED pixel data, never the filtered scanline bytes.
+ */
+static bool lsb_embed(byte *raw, const png_info_t *info, const char *message) {
+    uint64_t message_len = (uint64_t)strlen(message) + 1;
+    uint64_t bits_needed = message_len * BITS_PER_BYTE;
 
-    if (bits_needed > data_size) {
-        FATAL("lsb_embed: not enough bytes to embed the message");
+    if (bits_needed > info->sample_count) {
+        FATAL("lsb_embed: the message needs %llu bits but this image can only hide %llu",
+              (unsigned long long)bits_needed, (unsigned long long)info->sample_count);
         return false;
     }
 
-    uint32_t bit_index = 0;
-    for (uint32_t i = 0; i < message_len; i++) {
+    uint64_t bit_index = 0;
+    for (uint64_t i = 0; i < message_len; i++) {
         byte c = (byte)message[i];
-        for (int b = 0; b < 8; b++) {
+        for (int b = 0; b < BITS_PER_BYTE; b++) {
             byte bit        = (c >> b) & 1;
-            data[bit_index] = (byte)((data[bit_index] & 0xFE) | bit);
+            uint64_t offset = sample_offset(info, bit_index);
+            raw[offset]     = (byte)((raw[offset] & LSB_MASK) | bit);
             bit_index++;
         }
     }
     return true;
 }
 
-static char *lsb_extract(const byte *data, uint32_t data_size) {
-    uint32_t max_chars = data_size / 8;
+static char *lsb_extract(const byte *raw, const png_info_t *info) {
+    uint64_t max_chars = info->sample_count / BITS_PER_BYTE;
     char *message      = malloc(max_chars + 1);
     if (NULL == message) {
         FATAL("lsb_extract: allocation failed");
         return NULL;
     }
 
-    uint32_t bit_index = 0;
-    for (uint32_t i = 0; i < max_chars; i++) {
+    uint64_t bit_index = 0;
+    for (uint64_t i = 0; i < max_chars; i++) {
         byte c = 0;
-        for (int b = 0; b < 8; b++) {
-            byte bit = data[bit_index] & 1;
+        for (int b = 0; b < BITS_PER_BYTE; b++) {
+            byte bit = raw[sample_offset(info, bit_index)] & 1;
             c |= (byte)(bit << b);
             bit_index++;
         }

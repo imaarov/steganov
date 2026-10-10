@@ -12,6 +12,7 @@
 #define PNG_CHUNK_ID_SIZE          4
 #define PNG_LENGTH_FIELD_SIZE      4
 #define PNG_IHDR_CHUNK_ID          "IHDR"
+#define PNG_IHDR_DATA_SIZE         13
 #define PNG_IHDR_WIDTH_FIELD_SIZE  4
 #define PNG_IHDR_HEIGHT_FIELD_SIZE 4
 #define PNG_IDAT_CHUNK_ID          "IDAT"
