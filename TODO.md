@@ -29,7 +29,7 @@
 - [x] Implement Min heap priority for huffman algorithm
 - [x] Implement encoding/decoding for PNG
 - [ ] FIX src/deflate.c:122:huffman code lengths > 15 detected, falling back to no compression
-- [ ] Implement the unfilter step to make changes on raw pixels not filtered PIXELS!!!!!
+- [x] Implement the unfilter step to make changes on raw pixels not filtered PIXELS!!!!!
 - [ ] Implement Knuth Morris Pratt algorithm
 
 ## TODO Steganov
