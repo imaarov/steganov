@@ -1,7 +1,6 @@
 /**
  * DEFLATE pipeline encode/decode
  * based on RFC 1951
- * TODO: i think we should split this into two files
  * deflate_encode.c and deflate_decode.c
  */
 
@@ -213,7 +212,13 @@ static void write_dynamic_header(bitstream_t *stream, const canonical_huffman_co
     run_length_encode(combined, combined_size, &rle, cl_freq);
     free(combined);
 
-    huffman_code_set_t cl_code = build_canonical_huffman(cl_freq, CODE_LENGTH_ALPHABET_SIZE);
+    // the code length code lengths are written with 3 bits each, so they must stay <= 7
+    huffman_code_set_t cl_code = build_canonical_huffman_limited(cl_freq, CODE_LENGTH_ALPHABET_SIZE,
+                                                                 CODE_LENGTH_CODE_MAX_LENGTH);
+    if (!cl_code.status) {
+        FATAL("write_dynamic_header: failed to build the code length huffman code");
+        abort();
+    }
 
     uint8_t cl_lengths_in_order[CODE_LENGTH_ALPHABET_SIZE] = {0};
     for (uint16_t i = 0; i < cl_code.size; i++) {

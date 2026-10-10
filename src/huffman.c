@@ -163,6 +163,51 @@ huffman_code_set_t build_canonical_huffman(const uint32_t *frequency, uint16_t a
     return result;
 }
 
+huffman_code_set_t build_canonical_huffman_limited(const uint32_t *frequency,
+                                                   uint16_t alphabet_size, uint16_t max_length) {
+    huffman_code_set_t failed = {.codes = NULL, .size = 0, .status = false};
+    if (NULL == frequency || 0 == alphabet_size || 0 == max_length || max_length > 15)
+        return failed;
+
+    uint32_t *scaled = malloc(sizeof(uint32_t) * alphabet_size);
+    if (NULL == scaled)
+        return failed;
+    memcpy(scaled, frequency, sizeof(uint32_t) * alphabet_size);
+
+    uint32_t used = 0;
+    for (uint16_t s = 0; s < alphabet_size; s++)
+        if (scaled[s] > 0)
+            used++;
+    if (used > (1u << max_length)) {
+        FATAL("build_canonical_huffman_limited: %u symbols can not fit in %u bit codes", used,
+              max_length);
+        free(scaled);
+        return failed;
+    }
+
+    while (1) {
+        huffman_code_set_t set = build_canonical_huffman(scaled, alphabet_size);
+        if (!set.status) {
+            free(scaled);
+            return set;
+        }
+
+        uint16_t longest = 0;
+        for (uint16_t i = 0; i < set.size; i++)
+            if (set.codes[i].length > longest)
+                longest = set.codes[i].length;
+        if (longest <= max_length) {
+            free(scaled);
+            return set;
+        }
+
+        free_huffman_code_set(set);
+        for (uint16_t s = 0; s < alphabet_size; s++)
+            if (scaled[s] > 0)
+                scaled[s] = scaled[s] / 2 + scaled[s] % 2; // ceil(f / 2), never 0
+    }
+}
+
 void free_huffman_code_set(huffman_code_set_t set) { free(set.codes); }
 
 uint32_t assign_canonical_codes_from_lengths(const byte *lengths, uint32_t alphabet_size,

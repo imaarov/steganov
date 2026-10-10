@@ -27,6 +27,8 @@
 #define FIX_SIZE_BLOCK_SIZE       32768
 #define UNCOMPRESSED_BLOCK_SIZE   65535
 #define CODE_LENGTH_ALPHABET_SIZE 19
+// each code length code length is stored in 3 bits in the dynamic header (RFC 1951 3.2.7)
+#define CODE_LENGTH_CODE_MAX_LENGTH 7
 
 static const uint8_t CLC_ORDER[CODE_LENGTH_ALPHABET_SIZE] = {16, 17, 18, 0, 8,  7, 9,  6, 10, 5,
                                                              11, 4,  12, 3, 13, 2, 14, 1, 15};

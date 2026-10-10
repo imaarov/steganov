@@ -46,6 +46,8 @@ void free_huffman(canonical_huffman_code code);
 void free_huffman_code_set(huffman_code_set_t set);
 void print_huffman(const canonical_huffman_code *code);
 huffman_code_set_t build_canonical_huffman(const uint32_t *frequency, uint16_t alphabet_size);
+huffman_code_set_t build_canonical_huffman_limited(const uint32_t *frequency,
+                                                   uint16_t alphabet_size, uint16_t max_length);
 uint32_t assign_canonical_codes_from_lengths(const byte *lengths, uint32_t alphabet_size,
                                              huffman_code_t *out_codes);
 int decode_huffman_symbol(bitstream_t *reader, const huffman_code_t *codes, uint32_t count);
