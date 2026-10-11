@@ -58,6 +58,37 @@ make run-test
 # or
 ./bin/test_runner
 ```
+
+Use:
+```bash
+./bin/steganov
+steganov v1.0.0
+select the operation:
+1-encode data
+2-decode data
+3-exit
+2
+enter the file name where data should encode/decode there:
+test.png
+[DEBUG]: src/png.c:437:Header information:
+[DEBUG]: src/png.c:450:signature first 4 byte : 474e5089
+[DEBUG]: src/png.c:451:signature second 4 byte : a1a0a0d
+[DEBUG]: src/png.c:453:png file signature is standard
+[DEBUG]: src/png.c:478:IHDR chunk size: 13
+[DEBUG]: src/png.c:479:IHDR ID: IHDR
+[DEBUG]: src/png.c:480:IHDR width: 1280
+[DEBUG]: src/png.c:482:IHDR height: 853
+[DEBUG]: src/png.c:484:IHDR color type : 2
+[DEBUG]: src/png.c:485:IHDR compression type: 0
+[DEBUG]: src/png.c:486:IHDR filter type: 0
+[DEBUG]: src/png.c:487:IHDR interlace method: 0
+[DEBUG]: src/png.c:499:CRC CHECKED
+[DEBUG]: src/decode.c:58:INFO: Successful decoding operation
+
+INFO: secret message extracted from file is: fucktheworld
+
+```
+
 decode and test the expected string for encoded deflate string
 ```bash
 ./tools/validate_deflate.py
